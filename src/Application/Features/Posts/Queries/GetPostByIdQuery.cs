@@ -1,3 +1,6 @@
-﻿namespace Application.Features.Posts.Queries;
+﻿using Application.DTOs.Posts;
+using MediatR;
 
-public record GetPostByIdQuery(Guid PostId);
+namespace Application.Features.Posts.Queries;
+
+public record GetPostByIdQuery(Guid PostId) : IRequest<PostPageDto>;

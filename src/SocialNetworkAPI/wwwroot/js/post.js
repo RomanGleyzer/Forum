@@ -1,37 +1,51 @@
-﻿document.getElementById('post-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const textarea = document.getElementById('post-content');
-    const content = textarea.value.trim();
+﻿document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('post-form');
+    const feed = document.getElementById('posts');
+    if (!form || !feed) return;
 
-    if (!content) return alert('Введите текст поста');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const textarea = document.getElementById('post-content');
+        const content = textarea.value.trim();
 
-    const feed = document.getElementById('feed');
-    const tempPost = document.createElement('li');
-    tempPost.textContent = content + ' (отправка...)';
-    feed.prepend(tempPost);
+        if (!content) return alert('Введите текст поста');
 
-    const token = localStorage.getItem('token');
-    try {
-        const resp = await fetch('/api/posts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ content })
-        });
+        const noPostsMsg = document.getElementById('no-posts');
+        if (noPostsMsg) noPostsMsg.style.display = 'none';
 
-        if (resp.ok) {
-            const post = await resp.json();
-            tempPost.textContent = post.content + ' (опубликовано)';
-        } else {
+        const tempPost = document.createElement('li');
+        tempPost.textContent = content + ' (отправка...)';
+        feed.prepend(tempPost);
+
+        const token = localStorage.getItem('token');
+        try {
+            const resp = await fetch('/api/posts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (resp.ok) {
+                const post = await resp.json();
+                tempPost.textContent = post.content + ' (опубликовано)';
+            } else {
+                feed.removeChild(tempPost);
+                if (!feed.querySelector('li')) {
+                    if (noPostsMsg) noPostsMsg.style.display = '';
+                }
+                const err = await resp.json();
+                alert(err.message || 'Ошибка публикации');
+            }
+        } catch {
             feed.removeChild(tempPost);
-            const err = await resp.json();
-            alert(err.message || 'Ошибка публикации');
+            if (!feed.querySelector('li')) {
+                if (noPostsMsg) noPostsMsg.style.display = '';
+            }
+            alert('Сетевая ошибка!');
         }
-    } catch {
-        feed.removeChild(tempPost);
-        alert('Сетевая ошибка!');
-    }
-    textarea.value = '';
+        textarea.value = '';
+    });
 });

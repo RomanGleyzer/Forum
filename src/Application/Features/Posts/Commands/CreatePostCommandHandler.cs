@@ -4,19 +4,23 @@ using AutoMapper;
 using Domain.Entities;
 using Domain.Interfaces;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Security.Claims;
 
 namespace Application.Features.Posts.Commands;
 
 public class CreatePostCommandHandler(
     UserManager<ApplicationUser> userManager,
+    IHttpContextAccessor httpContextAccessor,
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
     ILogger<CreatePostCommandHandler> logger,
     IMapper mapper) : IRequestHandler<CreatePostCommand, Guid>
 {
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IPostRepository _repository = postRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<CreatePostCommandHandler> _logger = logger;
@@ -30,7 +34,14 @@ public class CreatePostCommandHandler(
 
         try
         {
-            var author = await FindAuthorAsync(request.AuthorId, activity);
+            var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            activity?.SetTag("author.id", userId);
+            activity?.SetTag("operation", "get-current-user");
+
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
+
+            var author = await FindAuthorAsync(userId, activity);
             var post = MapToPost(request, author);
 
             await SavePostAsync(post, cancellationToken);
@@ -40,7 +51,7 @@ public class CreatePostCommandHandler(
         }
         catch (Exception ex)
         {
-            HandleException(ex, request.AuthorId, activity);
+            HandleException(ex, activity);
             throw;
         }
     }
@@ -51,11 +62,10 @@ public class CreatePostCommandHandler(
         if (activity == null)
             _logger.LogWarning("Tracing is not enabled. Activity is null for {Handler}.", name);
 
-        activity?.SetTag("author.id", request.AuthorId);
         return activity;
     }
 
-    private async Task<ApplicationUser> FindAuthorAsync(Guid authorId, Activity? activity)
+    private async Task<ApplicationUser> FindAuthorAsync(string authorId, Activity? activity)
     {
         var author = await _userManager.FindByIdAsync(authorId.ToString());
         if (author == null)
@@ -72,6 +82,7 @@ public class CreatePostCommandHandler(
     {
         var post = _mapper.Map<Post>(request);
         post.Id = Guid.NewGuid();
+        post.AuthorId = author.Id;
         post.CreationDate = DateTimeOffset.UtcNow;
         return post;
     }
@@ -90,7 +101,7 @@ public class CreatePostCommandHandler(
         activity?.AddEvent(new ActivityEvent("PostCreated"));
     }
 
-    private void HandleException(Exception ex, Guid authorId, Activity? activity)
+    private void HandleException(Exception ex, Activity? activity)
     {
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
         activity?.AddEvent(new ActivityEvent(
@@ -101,7 +112,5 @@ public class CreatePostCommandHandler(
                 { "exception.message", ex.Message },
                 { "exception.stacktrace", ex.StackTrace }
             }));
-
-        _logger.LogError(ex, "Failed to create post for user {UserId}", authorId);
     }
 }
