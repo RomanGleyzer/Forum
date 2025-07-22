@@ -2,6 +2,7 @@
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Application.Interfaces;
+using Domain.Entities;
 using Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,22 +12,23 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
 {
     private readonly SocialNetworkDbContext _dbContext = dbContext;
 
-    public async Task<PostPageDto?> GetPostAsync(Guid postId, CancellationToken cancellationToken = default)
+    public async Task<PostPageDto?> GetByIdWithDetailsAsync(Guid postId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Posts
             .AsNoTracking()
-            .Where(p => p.Id == postId)
-            .Select(p => new PostPageDto
+            .Where(post => post.Id == postId)
+            .Select(post => new PostPageDto
             {
-                Id = p.Id,
-                Content = p.Content,
-                CreationDate = p.CreationDate,
+                Id = post.Id,
+                Content = post.Content,
+                CreationDate = post.CreationDate,
                 Author = new AuthorDto
                 {
-                    Id = p.Author.Id,
-                    UserName = p.Author.UserName ?? string.Empty
+                    Id = post.Author.Id,
+                    FirstName = post.Author.FirstName ?? string.Empty,
+                    LastName = post.Author.LastName ?? string.Empty
                 },
-                FeaturedComment = p.Comments
+                FeaturedComment = post.Comments
                 .Select(c => new CommentDto
                 {
                     Id = c.Id,
@@ -35,7 +37,8 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
                     Author = new AuthorDto
                     {
                         Id = c.Author.Id,
-                        UserName = c.Author.UserName ?? string.Empty
+                        FirstName = post.Author.FirstName ?? string.Empty,
+                        LastName = post.Author.LastName ?? string.Empty
                     }
                 })
                 .FirstOrDefault()
@@ -59,7 +62,8 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
                 Author = new AuthorDto
                 {
                     Id = post.Author.Id,
-                    UserName = post.Author.UserName ?? string.Empty
+                    FirstName = post.Author.FirstName ?? string.Empty,
+                    LastName = post.Author.LastName ?? string.Empty
                 },
                 FeaturedComment = post.Comments
                 .Select(c => new CommentDto
@@ -70,7 +74,8 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
                     Author = new AuthorDto
                     {
                         Id = c.Author.Id,
-                        UserName = c.Author.UserName ?? string.Empty
+                        FirstName = post.Author.FirstName ?? string.Empty,
+                        LastName = post.Author.LastName ?? string.Empty
                     }
                 })
                 .FirstOrDefault()
@@ -98,7 +103,8 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
                 Author = new AuthorDto
                 {
                     Id = post.Author.Id,
-                    UserName = post.Author.UserName ?? string.Empty
+                    FirstName = post.Author.FirstName ?? string.Empty,
+                    LastName = post.Author.LastName ?? string.Empty
                 },
                 FeaturedComment = post.Comments
                 .OrderByDescending(c => c.CreationDate)
@@ -109,8 +115,9 @@ public class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostRe
                     CreationDate = c.CreationDate,
                     Author = new AuthorDto
                     {
-                        Id = c.Author.Id,
-                        UserName = c.Author.UserName ?? string.Empty
+                        Id = post.Author.Id,
+                        FirstName = post.Author.FirstName ?? string.Empty,
+                        LastName = post.Author.LastName ?? string.Empty
                     }
                 })
                 .FirstOrDefault()

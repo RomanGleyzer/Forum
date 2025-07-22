@@ -1,4 +1,7 @@
-﻿using Application.Exceptions;
+﻿using Application.DTOs.Comment;
+using Application.DTOs.Posts;
+using Application.DTOs.Users;
+using Application.Exceptions;
 using Application.Interfaces;
 using AutoMapper;
 using Domain.Entities;
@@ -15,12 +18,14 @@ namespace Application.Features.Posts.Commands;
 public class CreatePostCommandHandler(
     UserManager<ApplicationUser> userManager,
     IHttpContextAccessor httpContextAccessor,
+    IPostReadModelRepository postReadModelRepository,
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
     ILogger<CreatePostCommandHandler> logger,
-    IMapper mapper) : IRequestHandler<CreatePostCommand, Guid>
+    IMapper mapper) : IRequestHandler<CreatePostCommand, PostPageDto>
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IPostReadModelRepository _postReadModelRepository = postReadModelRepository;
     private readonly IPostRepository _repository = postRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<CreatePostCommandHandler> _logger = logger;
@@ -28,7 +33,7 @@ public class CreatePostCommandHandler(
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private static readonly ActivitySource ActivitySource = new(nameof(CreatePostCommandHandler));
 
-    public async Task<Guid> Handle(CreatePostCommand request, CancellationToken cancellationToken)
+    public async Task<PostPageDto> Handle(CreatePostCommand request, CancellationToken cancellationToken)
     {
         using var activity = StartActivity("CreatePost", request);
 
@@ -43,11 +48,40 @@ public class CreatePostCommandHandler(
 
             var author = await FindAuthorAsync(userId, activity);
             var post = MapToPost(request, author);
-
+          
             await SavePostAsync(post, cancellationToken);
+
+            var dto = new PostPageDto
+            {
+                Id = post.Id,
+                Content = post.Content,
+                CreationDate = post.CreationDate,
+                Author = new AuthorDto
+                {
+                    Id = post.Author.Id,
+                    FirstName = post.Author.FirstName,
+                    LastName = post.Author.LastName
+                },
+                FeaturedComment = post.Comments
+                .OrderByDescending(c => c.CreationDate)
+                .Select(c => new CommentDto
+                {
+                    Id = c.Id,
+                    Content = c.Content,
+                    Author = new AuthorDto
+                    {
+                        Id = c.Author.Id,
+                        FirstName = c.Author.FirstName,
+                        LastName = c.Author.LastName,
+                    },
+                    CreationDate = c.CreationDate
+                })
+                .FirstOrDefault()
+            };
+
             LogSuccess(post, activity);
 
-            return post.Id;
+            return dto;
         }
         catch (Exception ex)
         {

@@ -23,7 +23,7 @@ public class GetPostByIdQueryHandler(
 
         try
         {
-            var post = await _repository.GetPostAsync(request.PostId, cancellationToken);
+            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, cancellationToken);
            
             GuardPostValid(post, request.PostId, activity);
             LogEntitySuccess(post, activity);
@@ -51,11 +51,17 @@ public class GetPostByIdQueryHandler(
             activity?.SetStatus(ActivityStatusCode.Error, "Post has no author");
             throw new InvalidOperationException($"Post {post?.Id} has no author.");
         }
-        if (string.IsNullOrEmpty(post.Author.UserName))
+        if (string.IsNullOrEmpty(post.Author.FirstName))
         {
-            _logger.LogWarning("Post {PostId} has empty username.", post.Id);
-            activity?.SetStatus(ActivityStatusCode.Error, "Post has empty username");
-            throw new InvalidOperationException($"Post {post.Id} has empty username.");
+            _logger.LogWarning("Post {PostId} has empty first name.", post.Id);
+            activity?.SetStatus(ActivityStatusCode.Error, "Post has empty first name");
+            throw new InvalidOperationException($"Post {post.Id} has empty first name.");
+        }
+        if (string.IsNullOrEmpty(post.Author.LastName))
+        {
+            _logger.LogWarning("Post {PostId} has empty last name.", post.Id);
+            activity?.SetStatus(ActivityStatusCode.Error, "Post has empty last name");
+            throw new InvalidOperationException($"Post {post.Id} has empty last name.");
         }
     }
 

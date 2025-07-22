@@ -30,9 +30,12 @@
 
             if (resp.ok) {
                 const post = await resp.json();
-                tempPost.textContent = post.content + ' (опубликовано)';
+                tempPost.remove();
+                const li = renderSinglePost(post);
+                feed.prepend(li);
+                textarea.value = '';
             } else {
-                feed.removeChild(tempPost);
+                tempPost.remove();
                 if (!feed.querySelector('li')) {
                     if (noPostsMsg) noPostsMsg.style.display = '';
                 }
@@ -40,12 +43,34 @@
                 alert(err.message || 'Ошибка публикации');
             }
         } catch {
-            feed.removeChild(tempPost);
+            tempPost.remove();
             if (!feed.querySelector('li')) {
                 if (noPostsMsg) noPostsMsg.style.display = '';
             }
             alert('Сетевая ошибка!');
         }
-        textarea.value = '';
     });
 });
+
+function renderSinglePost(post) {
+    const li = document.createElement('li');
+    li.className = 'mb-4';
+    li.innerHTML = `
+        <div class="card post-card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <img src="${escapeHtml(post.author?.avatarUrl ?? 'images/user-default.png')}" class="rounded-circle me-2" width="40" height="40" alt="avatar">
+                    <div>
+                        <div class="fw-bold">
+                            ${escapeHtml((post.author?.firstName ?? '') + ' ' + (post.author?.lastName ?? ''))}
+                        </div>
+                        <small class="text-muted">${formatDate(post.creationDate)}</small>
+                    </div>
+                </div>
+                <div class="mb-2">${escapeHtml(post.content)}</div>
+                ${post.featuredComment ? renderFeaturedComment(post.featuredComment) : ''}
+            </div>
+        </div>
+    `;
+    return li;
+}

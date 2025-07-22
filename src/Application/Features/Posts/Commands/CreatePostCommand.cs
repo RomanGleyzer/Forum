@@ -1,5 +1,6 @@
-﻿using MediatR;
+﻿using Application.DTOs.Posts;
+using MediatR;
 
 namespace Application.Features.Posts.Commands;
 
-public record CreatePostCommand(string Content) : IRequest<Guid>;
+public record CreatePostCommand(string Content) : IRequest<PostPageDto>;

@@ -52,7 +52,7 @@ public class PostsController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Post([FromBody] CreatePostCommand command)
     {
-        var postId = await _sender.Send(command);
-        return CreatedAtAction(nameof(Get), new { id = postId }, new { id = postId });
+        var post = await _sender.Send(command);
+        return CreatedAtAction(nameof(Get), new { id = post.Id }, post);
     }
 }
