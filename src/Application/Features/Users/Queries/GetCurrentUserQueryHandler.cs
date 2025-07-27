@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace Application.Features.Users.Queries;
 
-public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logger, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager) 
+public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logger, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager)
     : QueryHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
@@ -18,14 +18,15 @@ public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logg
 
     public override async Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("GetMe");
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("GetCurrentUser", ActivityKind.Server);
         SetTracingTags(activity, request);
 
         try
         {
             var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            activity?.SetTag("user.id", userId);
+            activity?.SetTag("enduser.id", userId);
             activity?.SetTag("operation", "get-current-user");
 
             if (string.IsNullOrEmpty(userId))
@@ -35,22 +36,26 @@ public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logg
                 ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
             _logger.LogInformation("The user with the id : {UserId} was found", userId);
-            activity?.SetTag("user.FirstName", currentUser.FirstName);
-            activity?.SetTag("user.FirstName", currentUser.LastName);
+            activity?.SetTag("user.first_name", currentUser.FirstName);
+            activity?.SetTag("user.last_name", currentUser.LastName);
             activity?.SetStatus(ActivityStatusCode.Ok);
             activity?.AddEvent(new ActivityEvent("UserWasFound"));
-
             return new CurrentUserDto
             {
                 FirstName = currentUser.FirstName,
                 LastName = currentUser.LastName
             };
-
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
         }
     }
 }

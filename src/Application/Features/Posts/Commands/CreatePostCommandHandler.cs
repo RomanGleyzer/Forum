@@ -1,4 +1,5 @@
-﻿using Application.DTOs.Comment;
+﻿using Application.Common.Handlers;
+using Application.DTOs.Comment;
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Application.Exceptions;
@@ -6,7 +7,6 @@ using Application.Interfaces;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Interfaces;
-using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -22,7 +22,7 @@ public class CreatePostCommandHandler(
     IPostRepository postRepository,
     IUnitOfWork unitOfWork,
     ILogger<CreatePostCommandHandler> logger,
-    IMapper mapper) : IRequestHandler<CreatePostCommand, PostPageDto>
+    IMapper mapper) : QueryHandlerBase<CreatePostCommand, PostPageDto>(logger)
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly IPostReadModelRepository _postReadModelRepository = postReadModelRepository;
@@ -33,22 +33,23 @@ public class CreatePostCommandHandler(
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private static readonly ActivitySource ActivitySource = new(nameof(CreatePostCommandHandler));
 
-    public async Task<PostPageDto> Handle(CreatePostCommand request, CancellationToken cancellationToken)
+    public override async Task<PostPageDto> Handle(CreatePostCommand request, CancellationToken cancellationToken)
     {
-        using var activity = StartActivity("CreatePost", request);
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("CreatePost", ActivityKind.Server);
+        SetTracingTags(activity, request);
 
         try
         {
             var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            activity?.SetTag("author.id", userId);
-            activity?.SetTag("operation", "get-current-user");
+            activity?.SetTag("enduser.id", userId);
 
             if (string.IsNullOrEmpty(userId))
                 throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
 
             var author = await FindAuthorAsync(userId, activity);
             var post = MapToPost(request, author);
-          
+
             await SavePostAsync(post, cancellationToken);
 
             var dto = new PostPageDto
@@ -79,24 +80,20 @@ public class CreatePostCommandHandler(
                 .FirstOrDefault()
             };
 
-            LogSuccess(post, activity);
+            LogSuccess(post, activity, sw.ElapsedMilliseconds);
 
             return dto;
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
         }
-    }
-
-    private Activity? StartActivity(string name, CreatePostCommand request)
-    {
-        var activity = ActivitySource.StartActivity(name);
-        if (activity == null)
-            _logger.LogWarning("Tracing is not enabled. Activity is null for {Handler}.", name);
-
-        return activity;
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+        }
     }
 
     private async Task<ApplicationUser> FindAuthorAsync(string authorId, Activity? activity)
@@ -127,16 +124,24 @@ public class CreatePostCommandHandler(
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private void LogSuccess(Post post, Activity? activity)
+    private void LogSuccess(Post post, Activity? activity, long? durationMs = null)
     {
-        _logger.LogInformation("Post created: {PostId}", post.Id);
+        _logger.LogInformation("Post created: {PostId}, Length: {Length}, AuthorId: {AuthorId}, HasComments: {HasComments}",
+            post.Id, post.Content?.Length ?? 0, post.AuthorId, post.Comments?.Any() == true);
+
         activity?.SetTag("post.id", post.Id);
+        activity?.SetTag("post.content_length", post.Content?.Length ?? 0);
+        activity?.SetTag("post.author_id", post.AuthorId);
+        activity?.SetTag("post.has_comments", post.Comments?.Any() == true);
+        if (durationMs != null)
+            activity?.SetTag("operation.duration_ms", durationMs.Value);
         activity?.SetStatus(ActivityStatusCode.Ok);
         activity?.AddEvent(new ActivityEvent("PostCreated"));
     }
 
-    private void HandleException(Exception ex, Activity? activity)
+    private void HandleException(Exception ex, Activity? activity, CreatePostCommand? request = null)
     {
+        _logger.LogError(ex, "Error creating post: {Message}", ex.Message);
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
         activity?.AddEvent(new ActivityEvent(
             "exception",
@@ -144,7 +149,8 @@ public class CreatePostCommandHandler(
             {
                 { "exception.type", ex.GetType().FullName },
                 { "exception.message", ex.Message },
-                { "exception.stacktrace", ex.StackTrace }
+                { "exception.stacktrace", ex.StackTrace ?? "" },
+                { "request.body", request != null ? System.Text.Json.JsonSerializer.Serialize(request) : string.Empty }
             }));
     }
 }

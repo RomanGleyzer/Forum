@@ -8,8 +8,7 @@ namespace Application.Features.Posts.Queries;
 
 public class GetUserPostsQueryHandler(
     IPostReadModelRepository repository,
-    ILogger<GetUserPostsQueryHandler> logger,
-    ICacheService? cacheService = null) : QueryHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger, cacheService)
+    ILogger<GetUserPostsQueryHandler> logger) : QueryHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository;
     private static readonly ActivitySource ActivitySource = new(nameof(GetPostsByCursorQueryHandler));

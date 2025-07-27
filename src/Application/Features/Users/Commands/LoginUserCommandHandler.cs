@@ -22,7 +22,8 @@ public class LoginUserCommandHandler(
 
     public override async Task<string> Handle(LoginUserCommand request, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("LoginUser");
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("LoginUser", ActivityKind.Server);
         SetTracingTags(activity, request);
         activity?.SetTag("user.login", request.Login);
 
@@ -49,8 +50,14 @@ public class LoginUserCommandHandler(
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
         }
     }
 

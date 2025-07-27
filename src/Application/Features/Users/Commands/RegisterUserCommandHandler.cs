@@ -18,7 +18,8 @@ public class RegisterUserCommandHandler(
 
     public override async Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("RegisterUser");
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("RegisterUser", ActivityKind.Server);
         SetTracingTags(activity, request);
         activity?.SetTag("user.email", request.Email);
 
@@ -28,17 +29,22 @@ public class RegisterUserCommandHandler(
 
             await CreateUserAsync(user, request.Password, activity);
 
-            _logger.LogInformation("User created successfully : {UserId}", user.Id);
-            activity?.SetTag("user.email", user.Email);
+            _logger.LogInformation("User created successfully: {UserId}", user.Id);
+            activity?.SetTag("user.id", user.Id);
             activity?.SetStatus(ActivityStatusCode.Ok);
             activity?.AddEvent(new ActivityEvent("UserRegistered"));
-
             return user.Id!;
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
         }
     }
 

@@ -1,8 +1,6 @@
 ﻿using Application.Common.Handlers;
 using Application.DTOs.Posts;
-using Application.Exceptions;
 using Application.Interfaces;
-using Domain.Entities;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -17,29 +15,35 @@ public class GetPostsByCursorQueryHandler(
 
     public override async Task<IReadOnlyList<PostPageDto>> Handle(GetPostsByCursorQuery request, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("GetPostsByCursor");
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("GetPostsByCursor", ActivityKind.Server);
         SetTracingTags(activity, request);
+        activity?.SetTag("query.cursor", request.Cursor);
+        activity?.SetTag("query.take", request.Take);
 
         try
         {
             var posts = await _repository.GetPagePostsCursorAsync(request.Cursor, request.Take, cancellationToken);
 
-            LogSuccess(posts, activity);
+            LogSuccess(posts, activity, sw.ElapsedMilliseconds);
             return posts;
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
         }
     }
 
     protected override void LogEntitySuccess(IReadOnlyList<PostPageDto> posts, Activity? activity)
     {
-        logger.LogInformation(
-            "Получено {Count} постов (Cursor: {Cursor}, TraceId: {TraceId})",
-            posts.Count,
-            activity?.GetTagItem("query.cursor"),
-            activity?.TraceId.ToString());
+        activity?.SetTag("result.count", posts.Count);
+        var postIds = string.Join(',', posts.Select(p => p.Id));
+        activity?.SetTag("result.post_ids", postIds);
     }
 }

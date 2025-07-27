@@ -2,7 +2,6 @@
 using Application.DTOs.Posts;
 using Application.Exceptions;
 using Application.Interfaces;
-using Domain.Entities;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -15,25 +14,31 @@ public class GetPostByIdQueryHandler(
     private readonly IPostReadModelRepository _repository = repository;
     private static readonly ActivitySource ActivitySource = new(nameof(GetPostByIdQueryHandler));
 
-    public async override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken cancellationToken)
+    public override async Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("GetPostsByCursor");
+        var sw = Stopwatch.StartNew();
+        using var activity = ActivitySource.StartActivity("GetPostById", ActivityKind.Server);
         SetTracingTags(activity, request);
         activity?.SetTag("post.id", request.PostId);
 
         try
         {
             var post = await _repository.GetByIdWithDetailsAsync(request.PostId, cancellationToken);
-           
+
             GuardPostValid(post, request.PostId, activity);
-            LogEntitySuccess(post, activity);
+            LogSuccess(post, activity, sw.ElapsedMilliseconds);
 
             return post;
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity);
+            HandleException(ex, activity, request);
             throw;
+        }
+        finally
+        {
+            sw.Stop();
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
         }
     }
 
@@ -42,6 +47,7 @@ public class GetPostByIdQueryHandler(
         if (post == null)
         {
             _logger.LogWarning("Post with ID {PostId} not found", postId);
+            activity?.AddEvent(new ActivityEvent("PostNotFound", DateTimeOffset.UtcNow, new ActivityTagsCollection { { "post.id", postId } }));
             activity?.SetStatus(ActivityStatusCode.Error, "Post not found");
             throw new NotFoundException<Guid>(postId);
         }
@@ -68,6 +74,8 @@ public class GetPostByIdQueryHandler(
     protected override void LogEntitySuccess(PostPageDto response, Activity? activity)
     {
         activity?.SetTag("post.id", response.Id);
-        activity?.SetTag("post.content", response.Content);
+        activity?.SetTag("post.content_length", response.Content?.Length ?? 0);
+        activity?.SetTag("post.author_id", response.Author?.Id);
+        activity?.SetTag("post.has_author", response.Author != null);
     }
 }
