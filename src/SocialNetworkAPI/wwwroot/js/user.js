@@ -7,6 +7,9 @@
         if (response.ok) {
             const user = await response.json();
             document.getElementById('sidebar-username').textContent = user.firstName + ' ' + user.lastName;
+            if (user.avatarUrl) {
+                document.getElementById('sidebar-avatar').src = user.avatarUrl;
+            }
         }
     }
 });

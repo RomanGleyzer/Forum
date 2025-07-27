@@ -26,5 +26,7 @@ public class AutoMapperProfile : Profile
             .ForMember(d => d.UserName, opt => opt.MapFrom(src => src.Email));
 
         CreateMap<ApplicationUser, ApplicationUserDto>();
+
+        CreateMap<UpdateUserCommand, ApplicationUser>();
     }
 }

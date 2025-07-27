@@ -1,5 +1,6 @@
 ﻿using Application.Common.Handlers;
 using Application.DTOs.Users;
+using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -9,23 +10,24 @@ using System.Security.Claims;
 
 namespace Application.Features.Users.Queries;
 
-public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logger, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager)
-    : QueryHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
+public class GetCurrentUserProfileQueryHandler(ILogger<GetCurrentUserQueryHandler> logger, IHttpContextAccessor httpContextAccessor, IMapper mapper, UserManager<ApplicationUser> userManager) 
+    : QueryHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly IMapper _mapper = mapper;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private static readonly ActivitySource ActivitySource = new(nameof(GetCurrentUserQueryHandler));
+    private static readonly ActivitySource ActivitySource = new(nameof(GetCurrentUserProfileQueryHandler));
 
-    public override async Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
+    public override async Task<ApplicationUserDto> Handle(GetCurrentUserProfileQuery request, CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
-        using var activity = ActivitySource.StartActivity("GetCurrentUser", ActivityKind.Server);
+        using var activity = ActivitySource.StartActivity("GetProfileUser", ActivityKind.Server);
         SetTracingTags(activity, request);
 
         var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         activity?.SetTag("enduser.id", userId);
-        activity?.SetTag("operation", "get-current-user");
+        activity?.SetTag("operation", "get-profile-user");
 
         if (string.IsNullOrEmpty(userId))
             throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
@@ -52,10 +54,6 @@ public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logg
         activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
         activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
 
-        return new CurrentUserDto
-        {
-            FirstName = currentUser.FirstName,
-            LastName = currentUser.LastName
-        };
+        return _mapper.Map<ApplicationUserDto>(currentUser);
     }
 }

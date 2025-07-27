@@ -1,10 +1,11 @@
-﻿using FluentValidation;
+﻿using Application.Features.Posts.Queries;
+using FluentValidation;
 
-namespace Application.Features.Posts.Queries;
+namespace Application.Features.Users.Commands;
 
-public class GetUserPostsQueryValidator : AbstractValidator<GetUserPostsQuery>
+public class UpdateUserCommandValidator : AbstractValidator<GetUserPostsQuery>
 {
-    public GetUserPostsQueryValidator()
+    public UpdateUserCommandValidator()
     {
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("UserId is required.");

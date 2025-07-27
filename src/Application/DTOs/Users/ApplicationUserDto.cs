@@ -11,4 +11,8 @@ public class ApplicationUserDto
     public string UserName { get; init; } = null!;
 
     public string Email { get; init; } = null!;
+
+    public string About { get; init; } = null!;
+
+    public DateOnly DateOfBirth { get; init; }
 }

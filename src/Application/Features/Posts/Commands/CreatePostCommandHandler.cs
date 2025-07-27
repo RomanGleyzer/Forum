@@ -15,20 +15,12 @@ using System.Security.Claims;
 
 namespace Application.Features.Posts.Commands;
 
-public class CreatePostCommandHandler(
-    UserManager<ApplicationUser> userManager,
-    IHttpContextAccessor httpContextAccessor,
-    IPostReadModelRepository postReadModelRepository,
-    IPostRepository postRepository,
-    IUnitOfWork unitOfWork,
-    ILogger<CreatePostCommandHandler> logger,
-    IMapper mapper) : QueryHandlerBase<CreatePostCommand, PostPageDto>(logger)
+public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, IPostRepository postRepository, IUnitOfWork unitOfWork, ILogger<CreatePostCommandHandler> logger, IMapper mapper, UserManager<ApplicationUser> userManager) 
+    : QueryHandlerBase<CreatePostCommand, PostPageDto>(logger)
 {
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-    private readonly IPostReadModelRepository _postReadModelRepository = postReadModelRepository;
     private readonly IPostRepository _repository = postRepository;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly ILogger<CreatePostCommandHandler> _logger = logger;
     private readonly IMapper _mapper = mapper;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private static readonly ActivitySource ActivitySource = new(nameof(CreatePostCommandHandler));
@@ -39,61 +31,37 @@ public class CreatePostCommandHandler(
         using var activity = ActivitySource.StartActivity("CreatePost", ActivityKind.Server);
         SetTracingTags(activity, request);
 
+        var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        activity?.SetTag("enduser.id", userId);
+
+        if (string.IsNullOrEmpty(userId))
+            throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
+
+        var post = MapToPost(request, null!);
+
+        ApplicationUser author;
         try
         {
-            var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            activity?.SetTag("enduser.id", userId);
-
-            if (string.IsNullOrEmpty(userId))
-                throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
-
-            var author = await FindAuthorAsync(userId, activity);
-            var post = MapToPost(request, author);
+            author = await FindAuthorAsync(userId, activity);
+            post.Author = author;
+            post.AuthorId = author.Id;
 
             await SavePostAsync(post, cancellationToken);
-
-            var dto = new PostPageDto
-            {
-                Id = post.Id,
-                Content = post.Content,
-                CreationDate = post.CreationDate,
-                Author = new AuthorDto
-                {
-                    Id = post.Author.Id,
-                    FirstName = post.Author.FirstName,
-                    LastName = post.Author.LastName
-                },
-                FeaturedComment = post.Comments
-                .OrderByDescending(c => c.CreationDate)
-                .Select(c => new CommentDto
-                {
-                    Id = c.Id,
-                    Content = c.Content,
-                    Author = new AuthorDto
-                    {
-                        Id = c.Author.Id,
-                        FirstName = c.Author.FirstName,
-                        LastName = c.Author.LastName,
-                    },
-                    CreationDate = c.CreationDate
-                })
-                .FirstOrDefault()
-            };
-
-            LogSuccess(post, activity, sw.ElapsedMilliseconds);
-
-            return dto;
         }
         catch (Exception ex)
         {
             HandleException(ex, activity, request);
             throw;
         }
-        finally
-        {
-            sw.Stop();
-            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        }
+
+        var dto = MapToDto(post);
+        LogSuccess(post, activity, sw.ElapsedMilliseconds);
+
+        sw.Stop();
+        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+
+        return dto;
     }
 
     private async Task<ApplicationUser> FindAuthorAsync(string authorId, Activity? activity)
@@ -113,9 +81,41 @@ public class CreatePostCommandHandler(
     {
         var post = _mapper.Map<Post>(request);
         post.Id = Guid.NewGuid();
-        post.AuthorId = author.Id;
         post.CreationDate = DateTimeOffset.UtcNow;
         return post;
+    }
+
+    private PostPageDto MapToDto(Post post)
+    {
+        var dto = new PostPageDto
+        {
+            Id = post.Id,
+            Content = post.Content,
+            CreationDate = post.CreationDate,
+            Author = new AuthorDto
+            {
+                Id = post.Author.Id,
+                FirstName = post.Author.FirstName,
+                LastName = post.Author.LastName
+            },
+            FeaturedComment = post.Comments
+                .OrderByDescending(c => c.CreationDate)
+                .Select(c => new CommentDto
+                {
+                    Id = c.Id,
+                    Content = c.Content,
+                    Author = new AuthorDto
+                    {
+                        Id = c.Author.Id,
+                        FirstName = c.Author.FirstName,
+                        LastName = c.Author.LastName,
+                    },
+                    CreationDate = c.CreationDate
+                })
+                .FirstOrDefault()
+        };
+
+        return dto;
     }
 
     private async Task SavePostAsync(Post post, CancellationToken cancellationToken)

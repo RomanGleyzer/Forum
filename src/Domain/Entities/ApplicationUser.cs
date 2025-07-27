@@ -9,6 +9,8 @@ public class ApplicationUser : IdentityUser, IDbEntity<string>
 
     public string LastName { get; set; } = null!;
 
+    public string About { get; set; } = null!;
+
     public DateOnly DateOfBirth { get; set; }
 
     public virtual ICollection<Post> Posts { get; set; } = [];

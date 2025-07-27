@@ -326,3 +326,16 @@ body {
     color: #b0b5c5;
     opacity: 1;
 }
+
+
+/* ===== USER ===== */
+
+.user-block {
+    transition: box-shadow .2s;
+}
+
+    .user-block:hover {
+        box-shadow: 0 2px 16px rgba(40,80,160,.10);
+        background: #f8fafc;
+        cursor: pointer;
+    }

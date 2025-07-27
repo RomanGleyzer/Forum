@@ -11,10 +11,8 @@ using System.Text;
 
 namespace Application.Features.Users.Commands;
 
-public class LoginUserCommandHandler(
-    UserManager<ApplicationUser> userManager,
-    ILogger<LoginUserCommandHandler> logger,
-    IConfiguration configuration) : QueryHandlerBase<LoginUserCommand, string>(logger)
+public class LoginUserCommandHandler(UserManager<ApplicationUser> userManager, ILogger<LoginUserCommandHandler> logger, IConfiguration configuration) 
+    : QueryHandlerBase<LoginUserCommand, string>(logger)
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly IConfiguration _configuration = configuration;
@@ -27,38 +25,40 @@ public class LoginUserCommandHandler(
         SetTracingTags(activity, request);
         activity?.SetTag("user.login", request.Login);
 
+        ApplicationUser? user = null;
+        string tokenString;
+
         try
         {
-            var user = await FindUserByLoginAsync(request.Login)
+            user = await FindUserByLoginAsync(request.Login)
                 ?? throw Unauthorized("Invalid username or password.", activity);
 
             await CheckPasswordAsync(user, request.Password, activity);
 
             var token = GenerateJwtSecurityToken(
-            [
-                new (ClaimTypes.NameIdentifier, user.Id),
+                [
+                    new (ClaimTypes.NameIdentifier, user.Id),
                 new (ClaimTypes.Name, user.UserName ?? string.Empty)
-            ]);
-
-            _logger.LogInformation("User authenticated: {UserId} ({Email})", user.Id, user.Email);
-            activity?.SetTag("user.id", user.Id);
-            activity?.SetTag("user.email", user.Email);
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            activity?.AddEvent(new ActivityEvent("UserAuthenticated"));
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                ]);
+            tokenString = new JwtSecurityTokenHandler().WriteToken(token);
         }
         catch (Exception ex)
         {
             HandleException(ex, activity, request);
             throw;
         }
-        finally
-        {
-            sw.Stop();
-            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
-            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        }
+
+        _logger.LogInformation("User authenticated: {UserId} ({Email})", user!.Id, user.Email);
+        activity?.SetTag("user.id", user.Id);
+        activity?.SetTag("user.email", user.Email);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        activity?.AddEvent(new ActivityEvent("UserAuthenticated"));
+
+        sw.Stop();
+        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+
+        return tokenString;
     }
 
     private async Task<ApplicationUser?> FindUserByLoginAsync(string login)

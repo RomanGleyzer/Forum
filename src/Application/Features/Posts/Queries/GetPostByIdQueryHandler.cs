@@ -21,25 +21,25 @@ public class GetPostByIdQueryHandler(
         SetTracingTags(activity, request);
         activity?.SetTag("post.id", request.PostId);
 
+        PostPageDto? post = null;
         try
         {
-            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, cancellationToken);
-
-            GuardPostValid(post, request.PostId, activity);
-            LogSuccess(post, activity, sw.ElapsedMilliseconds);
-
-            return post;
+            post = await _repository.GetByIdWithDetailsAsync(request.PostId, cancellationToken);
         }
         catch (Exception ex)
         {
             HandleException(ex, activity, request);
             throw;
         }
-        finally
-        {
-            sw.Stop();
-            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        }
+
+        GuardPostValid(post, request.PostId, activity);
+        LogSuccess(post, activity, sw.ElapsedMilliseconds);
+
+        sw.Stop();
+        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+
+        return post;
     }
 
     private void GuardPostValid(PostPageDto? post, Guid postId, Activity? activity)

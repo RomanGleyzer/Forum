@@ -7,10 +7,8 @@ using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
-public class RegisterUserCommandHandler(
-    UserManager<ApplicationUser> userManager,
-    ILogger<RegisterUserCommandHandler> logger,
-    IMapper mapper) : QueryHandlerBase<RegisterUserCommand, string>(logger)
+public class RegisterUserCommandHandler(UserManager<ApplicationUser> userManager, ILogger<RegisterUserCommandHandler> logger, IMapper mapper) 
+    : QueryHandlerBase<RegisterUserCommand, string>(logger)
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly IMapper _mapper = mapper;
@@ -23,29 +21,28 @@ public class RegisterUserCommandHandler(
         SetTracingTags(activity, request);
         activity?.SetTag("user.email", request.Email);
 
+        var user = _mapper.Map<ApplicationUser>(request);
+
         try
         {
-            var user = _mapper.Map<ApplicationUser>(request);
-
             await CreateUserAsync(user, request.Password, activity);
-
-            _logger.LogInformation("User created successfully: {UserId}", user.Id);
-            activity?.SetTag("user.id", user.Id);
-            activity?.SetStatus(ActivityStatusCode.Ok);
-            activity?.AddEvent(new ActivityEvent("UserRegistered"));
-            return user.Id!;
         }
         catch (Exception ex)
         {
             HandleException(ex, activity, request);
             throw;
         }
-        finally
-        {
-            sw.Stop();
-            activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
-            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        }
+
+        _logger.LogInformation("User created successfully: {UserId}", user.Id);
+        activity?.SetTag("user.id", user.Id);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        activity?.AddEvent(new ActivityEvent("UserRegistered"));
+
+        sw.Stop();
+        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+
+        return user.Id;
     }
 
     private async Task CreateUserAsync(ApplicationUser user, string password, Activity? activity)
