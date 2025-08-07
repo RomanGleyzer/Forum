@@ -7,16 +7,22 @@ using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
-public class RegisterUserCommandHandler(UserManager<ApplicationUser> userManager, ILogger<RegisterUserCommandHandler> logger, IMapper mapper) 
+/// <summary>
+/// Обработчик регистрации пользователя.
+/// </summary>
+public class RegisterUserCommandHandler(
+    UserManager<ApplicationUser> userManager,
+    ILogger<RegisterUserCommandHandler> logger,
+    IMapper mapper)
     : QueryHandlerBase<RegisterUserCommand, string>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private readonly IMapper _mapper = mapper;
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     private static readonly ActivitySource ActivitySource = new(nameof(RegisterUserCommandHandler));
 
     public override async Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         using var activity = ActivitySource.StartActivity("RegisterUser", ActivityKind.Server);
         SetTracingTags(activity, request);
         activity?.SetTag("user.email", request.Email);
@@ -38,8 +44,8 @@ public class RegisterUserCommandHandler(UserManager<ApplicationUser> userManager
         activity?.SetStatus(ActivityStatusCode.Ok);
         activity?.AddEvent(new ActivityEvent("UserRegistered"));
 
-        sw.Stop();
-        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        stopwatch.Stop();
+        activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
         activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
 
         return user.Id;

@@ -11,21 +11,27 @@ using System.Text;
 
 namespace Application.Features.Users.Commands;
 
-public class LoginUserCommandHandler(UserManager<ApplicationUser> userManager, ILogger<LoginUserCommandHandler> logger, IConfiguration configuration) 
+/// <summary>
+/// Обработчик аутентификации пользователя и выдачи JWT.
+/// </summary>
+public class LoginUserCommandHandler(
+    UserManager<ApplicationUser> userManager,
+    ILogger<LoginUserCommandHandler> logger,
+    IConfiguration configuration)
     : QueryHandlerBase<LoginUserCommand, string>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private readonly IConfiguration _configuration = configuration;
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     private static readonly ActivitySource ActivitySource = new(nameof(LoginUserCommandHandler));
 
     public override async Task<string> Handle(LoginUserCommand request, CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         using var activity = ActivitySource.StartActivity("LoginUser", ActivityKind.Server);
         SetTracingTags(activity, request);
         activity?.SetTag("user.login", request.Login);
 
-        ApplicationUser? user = null;
+        ApplicationUser user;
         string tokenString;
 
         try
@@ -38,7 +44,7 @@ public class LoginUserCommandHandler(UserManager<ApplicationUser> userManager, I
             var token = GenerateJwtSecurityToken(
                 [
                     new (ClaimTypes.NameIdentifier, user.Id),
-                new (ClaimTypes.Name, user.UserName ?? string.Empty)
+                    new (ClaimTypes.Name, user.UserName ?? string.Empty)
                 ]);
             tokenString = new JwtSecurityTokenHandler().WriteToken(token);
         }
@@ -48,14 +54,14 @@ public class LoginUserCommandHandler(UserManager<ApplicationUser> userManager, I
             throw;
         }
 
-        _logger.LogInformation("User authenticated: {UserId} ({Email})", user!.Id, user.Email);
+        _logger.LogInformation("User authenticated: {UserId} ({Email})", user.Id, user.Email);
         activity?.SetTag("user.id", user.Id);
         activity?.SetTag("user.email", user.Email);
         activity?.SetStatus(ActivityStatusCode.Ok);
         activity?.AddEvent(new ActivityEvent("UserAuthenticated"));
 
-        sw.Stop();
-        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        stopwatch.Stop();
+        activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
         activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
 
         return tokenString;
@@ -96,13 +102,11 @@ public class LoginUserCommandHandler(UserManager<ApplicationUser> userManager, I
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
+        return new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(expiresInMinutes)),
             signingCredentials: creds);
-
-        return token;
     }
 }

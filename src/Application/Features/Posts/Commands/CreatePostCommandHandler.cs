@@ -15,29 +15,35 @@ using System.Security.Claims;
 
 namespace Application.Features.Posts.Commands;
 
-public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, IPostRepository postRepository, IUnitOfWork unitOfWork, ILogger<CreatePostCommandHandler> logger, IMapper mapper, UserManager<ApplicationUser> userManager) 
+/// <summary>
+/// Обработчик создания поста.
+/// </summary>
+public class CreatePostCommandHandler(
+    IHttpContextAccessor httpContextAccessor,
+    IPostRepository postRepository,
+    IUnitOfWork unitOfWork,
+    ILogger<CreatePostCommandHandler> logger,
+    IMapper mapper,
+    UserManager<ApplicationUser> userManager)
     : QueryHandlerBase<CreatePostCommand, PostPageDto>(logger)
 {
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-    private readonly IPostRepository _repository = postRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IMapper _mapper = mapper;
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+    private readonly IPostRepository _repository = postRepository ?? throw new ArgumentNullException(nameof(postRepository));
+    private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+    private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private static readonly ActivitySource ActivitySource = new(nameof(CreatePostCommandHandler));
 
     public override async Task<PostPageDto> Handle(CreatePostCommand request, CancellationToken cancellationToken)
     {
-        var sw = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         using var activity = ActivitySource.StartActivity("CreatePost", ActivityKind.Server);
         SetTracingTags(activity, request);
 
-        var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = GetCurrentUserId();
         activity?.SetTag("enduser.id", userId);
 
-        if (string.IsNullOrEmpty(userId))
-            throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
-
-        var post = MapToPost(request, null!);
+        Post post = MapToPost(request);
 
         ApplicationUser author;
         try
@@ -45,7 +51,6 @@ public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, 
             author = await FindAuthorAsync(userId, activity);
             post.Author = author;
             post.AuthorId = author.Id;
-
             await SavePostAsync(post, cancellationToken);
         }
         catch (Exception ex)
@@ -55,18 +60,29 @@ public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, 
         }
 
         var dto = MapToDto(post);
-        LogSuccess(post, activity, sw.ElapsedMilliseconds);
+        LogSuccess(post, activity, stopwatch.ElapsedMilliseconds);
 
-        sw.Stop();
+        stopwatch.Stop();
         activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
+        activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
 
         return dto;
     }
 
+    private string GetCurrentUserId()
+    {
+        var httpContext = _httpContextAccessor.HttpContext
+                          ?? throw new UnauthorizedAccessException("HTTP context is missing.");
+
+        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            throw new UnauthorizedAccessException("An invalid user ID was received from claims.");
+        return userId;
+    }
+
     private async Task<ApplicationUser> FindAuthorAsync(string authorId, Activity? activity)
     {
-        var author = await _userManager.FindByIdAsync(authorId.ToString());
+        var author = await _userManager.FindByIdAsync(authorId);
         if (author == null)
         {
             var msg = $"Author with ID {authorId} not found.";
@@ -77,7 +93,7 @@ public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, 
         return author;
     }
 
-    private Post MapToPost(CreatePostCommand request, ApplicationUser author)
+    private Post MapToPost(CreatePostCommand request)
     {
         var post = _mapper.Map<Post>(request);
         post.Id = Guid.NewGuid();
@@ -137,20 +153,5 @@ public class CreatePostCommandHandler(IHttpContextAccessor httpContextAccessor, 
             activity?.SetTag("operation.duration_ms", durationMs.Value);
         activity?.SetStatus(ActivityStatusCode.Ok);
         activity?.AddEvent(new ActivityEvent("PostCreated"));
-    }
-
-    private void HandleException(Exception ex, Activity? activity, CreatePostCommand? request = null)
-    {
-        _logger.LogError(ex, "Error creating post: {Message}", ex.Message);
-        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-        activity?.AddEvent(new ActivityEvent(
-            "exception",
-            tags: new ActivityTagsCollection
-            {
-                { "exception.type", ex.GetType().FullName },
-                { "exception.message", ex.Message },
-                { "exception.stacktrace", ex.StackTrace ?? "" },
-                { "request.body", request != null ? System.Text.Json.JsonSerializer.Serialize(request) : string.Empty }
-            }));
     }
 }
