@@ -6,48 +6,31 @@ using System.Diagnostics;
 
 namespace Application.Features.Posts.Queries;
 
-public class GetUserPostsQueryHandler(IPostReadModelRepository repository, ILogger<GetUserPostsQueryHandler> logger) 
+public class GetUserPostsQueryHandler(
+    IPostReadModelRepository repository,
+    ILogger<GetUserPostsQueryHandler> logger)
     : QueryHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository;
-    private static readonly ActivitySource ActivitySource = new(nameof(GetPostsByCursorQueryHandler));
 
-    public override async Task<IReadOnlyCollection<PostPageDto>> Handle(GetUserPostsQuery request, CancellationToken cancellationToken)
-    {
-        var sw = Stopwatch.StartNew();
-        using var activity = ActivitySource.StartActivity("GetUserPosts");
-        SetTracingTags(activity, request);
-        activity?.SetTag("post.authorId", request.UserId);
-
-        IReadOnlyCollection<PostPageDto> posts;
-        try
+    public override Task<IReadOnlyCollection<PostPageDto>> Handle(GetUserPostsQuery request, CancellationToken cancellationToken) =>
+        ExecuteAsync("GetUserPosts", request, async activity =>
         {
-            posts = await _repository.GetUserPostsAsync(request.UserId, request.Skip, request.Take, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            HandleException(ex, activity);
-            throw;
-        }
+            activity?.SetTag("post.authorId", request.UserId);
 
-        if (posts == null || posts.Count == 0)
-        {
-            _logger.LogWarning("No posts found for user {UserId}", request.UserId);
-            activity?.SetStatus(ActivityStatusCode.Ok, "No posts found for user");
-            activity?.SetTag("result.count", 0);
-            activity?.AddEvent(new ActivityEvent("UserPostsEmpty"));
-            return [];
-        }
+            var posts = await _repository.GetUserPostsAsync(request.UserId, request.Skip, request.Take, cancellationToken);
 
-        LogSuccess(posts, activity);
+            if (posts == null || posts.Count == 0)
+            {
+                _logger.LogWarning("No posts found for user {UserId}", request.UserId);
+                activity?.SetStatus(ActivityStatusCode.Ok, "No posts found for user");
+                activity?.SetTag("result.count", 0);
+                activity?.AddEvent(new ActivityEvent("UserPostsEmpty"));
+                return Array.Empty<PostPageDto>();
+            }
 
-        sw.Stop();
-        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
-        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-
-        return posts;
-    }
+            return posts;
+        });
 
     protected override void LogEntitySuccess(IReadOnlyCollection<PostPageDto> posts, Activity? activity)
     {

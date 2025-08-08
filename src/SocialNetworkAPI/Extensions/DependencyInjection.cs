@@ -20,12 +20,15 @@ public static class DependencyInjection
                     .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("SocialNetworkAPI"))
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
+                    .AddSource("GetCurrentUserProfileQueryHandler")
+                    .AddSource("GetCurrentUserQueryHandler")
+                    .AddSource("UpdateUserCommandHandler")
+                    .AddSource("CreatePostCommandHandler")
+                    .AddSource("GetPostByIdQueryHandler")
+                    .AddSource("GetPostsByCursorQueryHandler")
+                    .AddSource("GetUserPostsQueryHandler")
                     .AddSource("RegisterUserCommandHandler")
                     .AddSource("LoginUserCommandHandler")
-                    .AddSource("GetCurrentUserQueryHandler")
-                    .AddSource("GetUserPostsQueryHandler")
-                    .AddSource("GetPostQueryHandler")
-                    .AddSource("CreatePostCommandHandler")
                     .AddConsoleExporter();
             });
 

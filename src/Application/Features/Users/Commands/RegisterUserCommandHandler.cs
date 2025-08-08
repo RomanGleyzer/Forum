@@ -7,9 +7,6 @@ using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
-/// <summary>
-/// Обработчик регистрации пользователя.
-/// </summary>
 public class RegisterUserCommandHandler(
     UserManager<ApplicationUser> userManager,
     ILogger<RegisterUserCommandHandler> logger,
@@ -18,51 +15,31 @@ public class RegisterUserCommandHandler(
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-    private static readonly ActivitySource ActivitySource = new(nameof(RegisterUserCommandHandler));
 
-    public override async Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        using var activity = ActivitySource.StartActivity("RegisterUser", ActivityKind.Server);
-        SetTracingTags(activity, request);
-        activity?.SetTag("user.email", request.Email);
-
-        var user = _mapper.Map<ApplicationUser>(request);
-
-        try
+    public override Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken) =>
+        ExecuteAsync("RegisterUser", request, async activity =>
         {
-            await CreateUserAsync(user, request.Password, activity);
-        }
-        catch (Exception ex)
-        {
-            HandleException(ex, activity, request);
-            throw;
-        }
+            activity?.SetTag("user.email", request.Email);
 
-        _logger.LogInformation("User created successfully: {UserId}", user.Id);
-        activity?.SetTag("user.id", user.Id);
-        activity?.SetStatus(ActivityStatusCode.Ok);
-        activity?.AddEvent(new ActivityEvent("UserRegistered"));
+            var user = _mapper.Map<ApplicationUser>(request);
+            user.About ??= string.Empty;
+            var result = await _userManager.CreateAsync(user, request.Password);
 
-        stopwatch.Stop();
-        activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
-        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+            if (!result.Succeeded)
+            {
+                var failures = result.Errors
+                    .Select(e => new FluentValidation.Results.ValidationFailure(e.Code, e.Description))
+                    .ToList();
 
-        return user.Id;
-    }
+                activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
+                activity?.SetTag("validation.errors", string.Join(", ", failures.Select(f => f.ErrorMessage)));
+                throw new FluentValidation.ValidationException(failures);
+            }
 
-    private async Task CreateUserAsync(ApplicationUser user, string password, Activity? activity)
-    {
-        var result = await _userManager.CreateAsync(user, password);
-        if (!result.Succeeded)
-        {
-            var failures = result.Errors
-                .Select(e => new FluentValidation.Results.ValidationFailure(e.Code, e.Description))
-                .ToList();
+            _logger.LogInformation("User created successfully: {UserId}", user.Id);
+            activity?.SetTag("user.id", user.Id);
+            activity?.AddEvent(new ActivityEvent("UserRegistered"));
 
-            activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
-            activity?.SetTag("validation.errors", string.Join(", ", failures.Select(f => f.ErrorMessage)));
-            throw new FluentValidation.ValidationException(failures);
-        }
-    }
+            return user.Id;
+        });
 }

@@ -1,7 +1,12 @@
-﻿using Application.Behaviors;
+﻿using Application.Abstractions.Auth;
+using Application.Abstractions.Identity;
+using Application.Behaviors;
+using Application.Common.Options;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Interfaces;
+using Infrastructure.Auth;
+using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Context;
 using Infrastructure.Persistence.Repositories;
@@ -57,14 +62,12 @@ public static class DependencyInjection
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-
         services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
             var redisConnectionString = config.GetConnectionString("Redis")
                 ?? throw new InvalidOperationException("Redis connection string is missing.");
             return ConnectionMultiplexer.Connect(redisConnectionString);
         });
-
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddStackExchangeRedisCache(options =>
@@ -73,15 +76,22 @@ public static class DependencyInjection
             options.InstanceName = "local";
         });
 
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        services.Configure<JwtOptions>(config.GetSection(JwtOptions.SectionName));
+
+        services.AddSingleton<IJwtTokenFactory, JwtTokenFactory>();
+
         return services;
     }
 
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration config)
     {
-        var jwtConfig = config.GetSection("Jwt");
-        var key = jwtConfig["Key"] ?? throw new ArgumentNullException(nameof(config), "Jwt:Key configuration is missing.");
-        var issuer = jwtConfig["Issuer"];
-        var audience = jwtConfig["Audience"];
+        var jwtOptions = config.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+            ?? throw new InvalidOperationException("JWT configuration section is missing or empty.");
+
+        var keyBytes = Encoding.UTF8.GetBytes(jwtOptions.Key);
 
         services.AddAuthentication(options =>
         {
@@ -96,9 +106,9 @@ public static class DependencyInjection
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = issuer,
-                ValidAudience = audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+                ValidIssuer = jwtOptions.Issuer,
+                ValidAudience = jwtOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                 ClockSkew = TimeSpan.Zero
             };
         });

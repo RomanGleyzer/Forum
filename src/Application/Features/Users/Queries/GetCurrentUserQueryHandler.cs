@@ -1,61 +1,35 @@
-﻿using Application.Common.Handlers;
+﻿using Application.Abstractions.Identity;
+using Application.Common.Handlers;
 using Application.DTOs.Users;
+using AutoMapper;
 using Domain.Entities;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using System.Security.Claims;
 
 namespace Application.Features.Users.Queries;
 
-public class GetCurrentUserQueryHandler(ILogger<GetCurrentUserQueryHandler> logger, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager)
+public class GetCurrentUserQueryHandler(
+    ILogger<GetCurrentUserQueryHandler> logger,
+    ICurrentUserService currentUser,
+    UserManager<ApplicationUser> userManager,
+    IMapper mapper)
     : QueryHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
 {
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly ICurrentUserService _currentUser = currentUser;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private static readonly ActivitySource ActivitySource = new(nameof(GetCurrentUserQueryHandler));
+    private readonly IMapper _mapper = mapper;
 
-    public override async Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
-    {
-        var sw = Stopwatch.StartNew();
-        using var activity = ActivitySource.StartActivity("GetCurrentUser", ActivityKind.Server);
-        SetTracingTags(activity, request);
-
-        var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        activity?.SetTag("enduser.id", userId);
-        activity?.SetTag("operation", "get-current-user");
-
-        if (string.IsNullOrEmpty(userId))
-            throw new UnauthorizedAccessException("An invalid user ID was received when trying to retrieve an ID from claims.");
-
-        ApplicationUser? currentUser = null;
-        try
+    public override Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken) =>
+        ExecuteAsync("GetCurrentUser", request, async activity =>
         {
-            currentUser = await _userManager.FindByIdAsync(userId)
+            var userId = _currentUser.UserId;
+            activity?.SetTag("enduser.id", userId);
+
+            var user = await _userManager.FindByIdAsync(userId)
                 ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
-        }
-        catch (Exception ex)
-        {
-            HandleException(ex, activity, request);
-            throw;
-        }
 
-        _logger.LogInformation("The user with the id : {UserId} was found", userId);
-        activity?.SetTag("user.first_name", currentUser.FirstName);
-        activity?.SetTag("user.last_name", currentUser.LastName);
-        activity?.SetStatus(ActivityStatusCode.Ok);
-        activity?.AddEvent(new ActivityEvent("UserWasFound"));
-
-        sw.Stop();
-        activity?.SetTag("operation.duration_ms", sw.ElapsedMilliseconds);
-        activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-
-        return new CurrentUserDto
-        {
-            FirstName = currentUser.FirstName,
-            LastName = currentUser.LastName
-        };
-    }
+            activity?.AddEvent(new ActivityEvent("UserWasFound"));
+            return _mapper.Map<CurrentUserDto>(user);
+        });
 }

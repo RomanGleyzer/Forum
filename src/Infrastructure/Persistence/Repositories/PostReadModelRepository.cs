@@ -2,7 +2,6 @@
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Application.Interfaces;
-using Domain.Entities;
 using Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 

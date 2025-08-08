@@ -1,5 +1,4 @@
-﻿using Application.Interfaces;
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -10,6 +9,37 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
     where TRequest : IRequest<TResponse>
 {
     protected readonly ILogger _logger = logger;
+
+    public abstract Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
+
+    protected async Task<TResponse> ExecuteAsync(
+        string activityName,
+        TRequest request,
+        Func<Activity?, Task<TResponse>> action)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        using var activity = new ActivitySource(GetType().Name).StartActivity(activityName, ActivityKind.Server);
+
+        SetTracingTags(activity, request);
+
+        try
+        {
+            var response = await action(activity);
+            LogSuccess(response, activity, stopwatch.ElapsedMilliseconds);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            HandleException(ex, activity, request);
+            throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
+            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
+        }
+    }
 
     protected virtual void SetTracingTags(Activity? activity, TRequest request)
     {
@@ -25,7 +55,8 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
         _logger.LogInformation("Successfully handled {RequestType}.", typeof(TRequest).Name);
         activity?.SetTag("status", "success");
         activity?.SetStatus(ActivityStatusCode.Ok);
-        activity?.AddEvent(new ActivityEvent("Success", tags: new ActivityTagsCollection { { "response.type", typeof(TResponse).Name } }));
+        activity?.AddEvent(new ActivityEvent("Success",
+            tags: new ActivityTagsCollection { { "response.type", typeof(TResponse).Name } }));
         if (durationMs != null)
             activity?.SetTag("operation.duration_ms", durationMs.Value);
 
@@ -33,8 +64,6 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
     }
 
     protected virtual void LogEntitySuccess(TResponse response, Activity? activity) { }
-
-    public abstract Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
 
     protected void HandleException(Exception ex, Activity? activity, TRequest? request = default)
     {
