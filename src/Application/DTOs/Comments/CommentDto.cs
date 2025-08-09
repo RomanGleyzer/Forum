@@ -1,6 +1,6 @@
 ﻿using Application.DTOs.Users;
 
-namespace Application.DTOs.Comment;
+namespace Application.DTOs.Comments;
 
 public record CommentDto
 {

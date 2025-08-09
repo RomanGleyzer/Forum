@@ -1,7 +1,7 @@
 ﻿using Application.DTOs.Posts;
 
 
-namespace Application.Interfaces;
+namespace Application.Abstractions;
 
 public interface IPostReadModelRepository
 {

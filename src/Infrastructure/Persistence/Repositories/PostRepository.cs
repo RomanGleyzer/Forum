@@ -1,5 +1,5 @@
-﻿using Domain.Entities;
-using Domain.Interfaces;
+﻿using Application.Abstractions;
+using Domain.Entities;
 using Infrastructure.Persistence.Context;
 using Microsoft.Extensions.Logging;
 

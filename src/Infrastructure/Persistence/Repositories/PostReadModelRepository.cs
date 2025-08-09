@@ -1,7 +1,7 @@
-﻿using Application.DTOs.Comment;
+﻿using Application.Abstractions;
+using Application.DTOs.Comments;
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
-using Application.Interfaces;
 using Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 

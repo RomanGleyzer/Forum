@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Comment;
+﻿using Application.DTOs.Comments;
 using Application.DTOs.Users;
 
 namespace Application.DTOs.Posts;

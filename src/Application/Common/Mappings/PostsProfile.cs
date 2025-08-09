@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Comment;
+﻿using Application.DTOs.Comments;
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Application.Features.Posts.Commands;

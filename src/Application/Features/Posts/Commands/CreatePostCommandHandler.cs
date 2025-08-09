@@ -1,11 +1,10 @@
-﻿using Application.Abstractions.Identity;
+﻿using Application.Abstractions;
+using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Posts;
 using Application.Exceptions;
-using Application.Interfaces;
 using AutoMapper;
 using Domain.Entities;
-using Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 

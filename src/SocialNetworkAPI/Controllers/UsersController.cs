@@ -7,30 +7,33 @@ using Microsoft.AspNetCore.Mvc;
 namespace SocialNetworkAPI.Controllers;
 
 [Authorize]
-[Route("api/[controller]")]
 [ApiController]
-public class UsersController(ISender sender) : ControllerBase
+[Route("api/[controller]")]
+[Produces("application/json")]
+public sealed class UsersController(ISender sender) : ControllerBase
 {
     private readonly ISender _sender = sender;
 
     [HttpGet("me")]
-    public async Task<IActionResult> GetMe()
+    public async Task<ActionResult<object>> GetMe(CancellationToken cancellationToken)
     {
-        var currentUserData = await _sender.Send(new GetCurrentUserQuery());
+        var currentUserData = await _sender.Send(new GetCurrentUserQuery(), cancellationToken);
         return Ok(currentUserData);
     }
 
     [HttpGet("me/profile")]
-    public async Task<IActionResult> GetMyProfile()
+    public async Task<ActionResult<object>> GetMyProfile(CancellationToken cancellationToken)
     {
-        var profile = await _sender.Send(new GetCurrentUserProfileQuery());
+        var profile = await _sender.Send(new GetCurrentUserProfileQuery(), cancellationToken);
         return Ok(profile);
     }
 
     [HttpPut]
-    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserCommand command)
+    public async Task<ActionResult<object>> UpdateUser(
+        [FromBody] UpdateUserCommand command,
+        CancellationToken cancellationToken)
     {
-        var updatedUser = await _sender.Send(command);
+        var updatedUser = await _sender.Send(command, cancellationToken);
         return Ok(updatedUser);
     }
 }

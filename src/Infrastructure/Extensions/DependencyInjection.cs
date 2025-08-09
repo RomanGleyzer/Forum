@@ -1,10 +1,9 @@
-﻿using Application.Abstractions.Auth;
+﻿using Application.Abstractions;
+using Application.Abstractions.Auth;
 using Application.Abstractions.Identity;
 using Application.Behaviors;
 using Application.Common.Options;
-using Application.Interfaces;
 using Domain.Entities;
-using Domain.Interfaces;
 using Infrastructure.Auth;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;

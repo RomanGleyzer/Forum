@@ -1,7 +1,7 @@
-﻿using Application.Common.Handlers;
+﻿using Application.Abstractions;
+using Application.Common.Handlers;
 using Application.DTOs.Posts;
 using Application.Exceptions;
-using Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 

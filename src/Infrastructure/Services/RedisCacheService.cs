@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using Application.Interfaces;
+using Application.Abstractions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 

@@ -1,4 +1,4 @@
-﻿namespace Application.Interfaces;
+﻿namespace Application.Abstractions;
 
 public interface ICacheService
 {
