@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using System.Text;
@@ -111,7 +112,28 @@ public static class DependencyInjection
                 IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                 ClockSkew = TimeSpan.Zero
             };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = ctx =>
+                {
+                    ctx.HttpContext.RequestServices
+                       .GetRequiredService<ILoggerFactory>()
+                       .CreateLogger("JWT")
+                       .LogError(ctx.Exception, "JWT auth failed");
+                    return Task.CompletedTask;
+                },
+                OnChallenge = ctx =>
+                {
+                    var logger = ctx.HttpContext.RequestServices
+                       .GetRequiredService<ILoggerFactory>()
+                       .CreateLogger("JWT");
+                    logger.LogWarning("JWT challenge: {Error} {Description}", ctx.Error, ctx.ErrorDescription);
+                    return Task.CompletedTask;
+                }
+            };
         });
+
 
         return services;
     }
