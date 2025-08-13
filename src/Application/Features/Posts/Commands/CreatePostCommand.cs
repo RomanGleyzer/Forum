@@ -3,4 +3,4 @@ using MediatR;
 
 namespace Application.Features.Posts.Commands;
 
-public record CreatePostCommand(string Content) : IRequest<PostPageDto>;
+public record CreatePostCommand(string Content) : IRequest<Guid>;

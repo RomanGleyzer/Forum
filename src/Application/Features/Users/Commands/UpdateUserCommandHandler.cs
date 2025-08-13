@@ -4,6 +4,8 @@ using Application.Common.Handlers;
 using Application.DTOs.Users;
 using AutoMapper;
 using Domain.Entities;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -26,43 +28,50 @@ public class UpdateUserCommandHandler(
     private const string MinKeyPrefix = "user:min";
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
-    public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken cancellationToken) =>
-        ExecuteAsync("UpdateUser", request, async activity =>
+    public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken ct) =>
+        ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
             activity?.SetTag("enduser.id", userId);
 
-            var user = await _userManager.FindByIdAsync(userId)
-                ?? throw new Application.Exceptions.NotFoundException<string>($"User with id '{userId}' not found.");
+            var user = await _userManager.FindByIdAsync(userId).ConfigureAwait(false) 
+                ?? throw new UnauthorizedAccessException("User is not found.");
+            
+            var (anyChanged, nameChanged) = ApplyChanges(user, request);
 
-            var oldFirst = Normalize(user.FirstName);
-            var oldLast = Normalize(user.LastName);
+            if (!anyChanged)
+            {
+                activity?.AddEvent(new ActivityEvent("NoOpUpdate"));
+                return _mapper.Map<ApplicationUserDto>(user);
+            }
 
-            _mapper.Map(request, user);
+            var result = await _userManager.UpdateAsync(user).ConfigureAwait(false);
 
-            var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
                 var failures = result.Errors
-                    .Select(e => new FluentValidation.Results.ValidationFailure(e.Code, e.Description))
-                    .ToList();
+                    .Select(e => new ValidationFailure(e.Code, e.Description))
+                    .ToArray();
 
-                activity?.SetStatus(ActivityStatusCode.Error, "User update failed");
-                activity?.SetTag("user.update.errors", string.Join(", ", failures.Select(f => f.ErrorMessage)));
-                throw new FluentValidation.ValidationException(failures);
+                activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
+                activity?.SetTag("validation.errors.count", failures.Length);
+                throw new ValidationException(failures);
             }
 
-            var nameChanged = oldFirst != Normalize(user.FirstName) || oldLast != Normalize(user.LastName);
-            
             if (nameChanged)
             {
-                var minDto = new CurrentUserDto 
-                { 
-                    FirstName = user.FirstName ?? string.Empty, 
-                    LastName = user.LastName ?? string.Empty 
-                };
+                await _cache.SetAsync(
+                        $"{MinKeyPrefix}:{userId}",
+                        new CurrentUserDto
+                        {
+                            FirstName = user.FirstName ?? string.Empty,
+                            LastName = user.LastName ?? string.Empty
+                        },
+                        MinTtl,
+                        ct
+                    )
+                    .ConfigureAwait(false);
 
-                await _cache.SetAsync(BuildKey(MinKeyPrefix, userId), minDto, MinTtl, cancellationToken).ConfigureAwait(false);
                 activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
             }
 
@@ -70,6 +79,36 @@ public class UpdateUserCommandHandler(
             return _mapper.Map<ApplicationUserDto>(user);
         });
 
+    private static (bool anyChanged, bool nameChanged) ApplyChanges(ApplicationUser user, UpdateUserCommand request)
+    {
+        var oldFirst = Normalize(user.FirstName);
+        var oldLast = Normalize(user.LastName);
+        var oldEmail = Normalize(user.Email);
+        var oldAbout = Normalize(user.About);
+        var oldDob = user.DateOfBirth;
+
+        var newFirst = Normalize(request.FirstName);
+        var newLast = Normalize(request.LastName);
+        var newEmail = Normalize(request.Email);
+        var newAbout = Normalize(request.About);
+        var newDob = request.DateOfBirth;
+
+        var nameChanged = !EqualsOrdinal(oldFirst, newFirst) || !EqualsOrdinal(oldLast, newLast);
+        var anyChanged = nameChanged
+                       || !EqualsOrdinal(oldEmail, newEmail)
+                       || !EqualsOrdinal(oldAbout, newAbout)
+                       || oldDob != newDob;
+
+        if (!anyChanged) return (false, false);
+
+        if (nameChanged) { user.FirstName = newFirst; user.LastName = newLast; }
+        if (!EqualsOrdinal(oldEmail, newEmail)) user.Email = newEmail;
+        if (!EqualsOrdinal(oldAbout, newAbout)) user.About = newAbout;
+        if (oldDob != newDob) user.DateOfBirth = newDob;
+
+        return (true, nameChanged);
+    }
+
+    private static bool EqualsOrdinal(string a, string b) => string.Equals(a, b, StringComparison.Ordinal);
     private static string Normalize(string? s) => (s ?? string.Empty).Trim();
-    private static string BuildKey(string prefix, string userId) => $"{prefix}:{userId}";
 }

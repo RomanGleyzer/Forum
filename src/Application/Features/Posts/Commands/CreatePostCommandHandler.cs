@@ -1,48 +1,42 @@
 ﻿using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
-using Application.DTOs.Posts;
-using Application.Exceptions;
 using AutoMapper;
 using Domain.Entities;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Posts.Commands;
 
-public class CreatePostCommandHandler(
-    ICurrentUserService currentUser,
-    IPostRepository postRepository,
-    IUnitOfWork unitOfWork,
+public sealed class CreatePostCommandHandler(
     ILogger<CreatePostCommandHandler> logger,
+    ICurrentUserService currentUser,
     IMapper mapper,
-    UserManager<ApplicationUser> userManager)
-    : QueryHandlerBase<CreatePostCommand, PostPageDto>(logger)
+    IPostRepository repository,
+    IUnitOfWork unitOfWork)
+    : QueryHandlerBase<CreatePostCommand, Guid>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser;
-    private readonly IPostRepository _repository = postRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly IPostRepository _repository = repository;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-    public override Task<PostPageDto> Handle(CreatePostCommand request, CancellationToken cancellationToken) =>
-        ExecuteAsync("CreatePost", request, async activity =>
+    public override Task<Guid> Handle(CreatePostCommand request, CancellationToken ct) =>
+        ExecuteAsync("CreatePost", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
-            activity?.SetTag("enduser.id", userId);
-
-            var author = await _userManager.FindByIdAsync(userId)
-                ?? throw new NotFoundException<string>($"Author with ID {userId} not found.");
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new UnauthorizedAccessException("User is not authenticated.");
 
             var post = _mapper.Map<Post>(request);
             post.Id = Guid.NewGuid();
             post.CreationDate = DateTimeOffset.UtcNow;
-            post.Author = author;
-            post.AuthorId = author.Id;
+            post.AuthorId = userId;
 
-            await _repository.AddAsync(post, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            await _repository.AddAsync(post, ct).ConfigureAwait(false);
+            await _unitOfWork.SaveChangesAsync(ct).ConfigureAwait(false);
 
-            return _mapper.Map<PostPageDto>(post);
+            activity?.SetTag("post.id", post.Id);
+
+            return post.Id;
         });
 }

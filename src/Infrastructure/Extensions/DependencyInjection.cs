@@ -62,25 +62,24 @@ public static class DependencyInjection
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
-        services.AddSingleton<IConnectionMultiplexer>(sp =>
-        {
-            var redisConnectionString = config.GetConnectionString("Redis")
-                ?? throw new InvalidOperationException("Redis connection string is missing.");
-            return ConnectionMultiplexer.Connect(redisConnectionString);
-        });
+        var redisConnectionString = config.GetConnectionString("Redis")
+            ?? throw new InvalidOperationException("Redis connection string is missing.");
+
+        services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(redisConnectionString));
+
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddStackExchangeRedisCache(options =>
         {
-            options.Configuration = "localhost";
-            options.InstanceName = "local";
+            options.Configuration = redisConnectionString;
+            options.InstanceName = "app:";
         });
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         services.Configure<JwtOptions>(config.GetSection(JwtOptions.SectionName));
-
         services.AddSingleton<IJwtTokenFactory, JwtTokenFactory>();
 
         return services;
@@ -100,6 +99,8 @@ public static class DependencyInjection
         })
         .AddJwtBearer(options =>
         {
+            options.MapInboundClaims = false;
+
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -109,7 +110,8 @@ public static class DependencyInjection
                 ValidIssuer = jwtOptions.Issuer,
                 ValidAudience = jwtOptions.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                ValidTypes = ["JWT"]
             };
 
             options.Events = new JwtBearerEvents

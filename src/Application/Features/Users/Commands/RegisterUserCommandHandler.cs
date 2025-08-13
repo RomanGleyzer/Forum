@@ -1,13 +1,15 @@
 ﻿using Application.Common.Handlers;
 using AutoMapper;
 using Domain.Entities;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
-public class RegisterUserCommandHandler(
+public sealed class RegisterUserCommandHandler(
     UserManager<ApplicationUser> userManager,
     ILogger<RegisterUserCommandHandler> logger,
     IMapper mapper)
@@ -16,24 +18,25 @@ public class RegisterUserCommandHandler(
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
 
-    public override Task<string> Handle(RegisterUserCommand request, CancellationToken cancellationToken) =>
-        ExecuteAsync("RegisterUser", request, async activity =>
+    public override Task<string> Handle(RegisterUserCommand request, CancellationToken ct) =>
+        ExecuteAsync("RegisterUser", ct, async (activity, ct) =>
         {
-            activity?.SetTag("user.email", request.Email);
-
             var user = _mapper.Map<ApplicationUser>(request);
             user.About ??= string.Empty;
-            var result = await _userManager.CreateAsync(user, request.Password);
+            user.UserName ??= user.Email;
+
+            var result = await _userManager.CreateAsync(user, request.Password)
+                .ConfigureAwait(false);
 
             if (!result.Succeeded)
             {
                 var failures = result.Errors
-                    .Select(e => new FluentValidation.Results.ValidationFailure(e.Code, e.Description))
-                    .ToList();
+                    .Select(e => new ValidationFailure(e.Code, e.Description))
+                    .ToArray();
 
                 activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
-                activity?.SetTag("validation.errors", string.Join(", ", failures.Select(f => f.ErrorMessage)));
-                throw new FluentValidation.ValidationException(failures);
+                activity?.SetTag("validation.errors.count", failures.Length);
+                throw new ValidationException(failures);
             }
 
             _logger.LogInformation("User created successfully: {UserId}", user.Id);

@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace Application.Features.Users.Commands;
 
-public class LoginUserCommandHandler(
+public sealed class LoginUserCommandHandler(
     UserManager<ApplicationUser> userManager,
     ILogger<LoginUserCommandHandler> logger,
     IJwtTokenFactory jwtTokenFactory)
@@ -18,30 +18,46 @@ public class LoginUserCommandHandler(
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly IJwtTokenFactory _jwtFactory = jwtTokenFactory;
 
-    public override Task<string> Handle(LoginUserCommand request, CancellationToken cancellationToken) =>
-        ExecuteAsync("LoginUser", request, async activity =>
+    public override Task<string> Handle(LoginUserCommand request, CancellationToken ct) =>
+        ExecuteAsync("LoginUser", ct, async (activity, ct) =>
         {
-            activity?.SetTag("user.login", request.Login);
+            ApplicationUser? user = null;
 
-            var user = await _userManager.FindByEmailAsync(request.Login)
-                       ?? Unauthorized("Invalid username or password.", activity);
-
-            if (!await _userManager.CheckPasswordAsync(user, request.Password))
-                Unauthorized("Invalid username or password.", activity);
-
-            var claims = new List<Claim>
+            if (!string.IsNullOrWhiteSpace(request.Login))
             {
-                new(ClaimTypes.NameIdentifier, user.Id),
-                new(ClaimTypes.Name, user.UserName ?? string.Empty)
+                user = await _userManager.FindByEmailAsync(request.Login).ConfigureAwait(false)
+                       ?? await _userManager.FindByNameAsync(request.Login).ConfigureAwait(false);
+            }
+
+            if (user is null)
+            {
+                ThrowUnauthorized("Invalid username or password.", activity);
+            }
+
+            var passwordOk = await _userManager.CheckPasswordAsync(user!, request.Password).ConfigureAwait(false);
+            if (!passwordOk)
+            {
+                ThrowUnauthorized("Invalid username or password.", activity);
+            }
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user!.Id),
+                new Claim(ClaimTypes.NameIdentifier, user!.Id),
+                new Claim(ClaimTypes.Name, user!.UserName ?? string.Empty),
+                new Claim(ClaimTypes.Email, user!.Email ?? string.Empty)
             };
 
             var token = _jwtFactory.CreateToken(claims);
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
             activity?.AddEvent(new ActivityEvent("UserAuthenticated"));
+            activity?.SetTag("user.id", user!.Id);
+
             return tokenString;
         });
 
-    private ApplicationUser Unauthorized(string message, Activity? activity)
+    private void ThrowUnauthorized(string message, Activity? activity)
     {
         _logger.LogWarning(message);
         activity?.SetStatus(ActivityStatusCode.Error, message);

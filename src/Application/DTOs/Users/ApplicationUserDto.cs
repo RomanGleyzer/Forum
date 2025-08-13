@@ -8,8 +8,6 @@ public class ApplicationUserDto
 
     public string LastName { get; init; } = null!;
 
-    public string UserName { get; init; } = null!;
-
     public string Email { get; init; } = null!;
 
     public string About { get; init; } = null!;

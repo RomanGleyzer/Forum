@@ -7,21 +7,18 @@ using System.Diagnostics;
 
 namespace Application.Features.Posts.Queries;
 
-public class GetPostByIdQueryHandler(
+public sealed class GetPostByIdQueryHandler(
     IPostReadModelRepository repository,
     ILogger<GetPostByIdQueryHandler> logger)
     : QueryHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository;
 
-    public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken cancellationToken) =>
-        ExecuteAsync("GetPostById", request, async activity =>
+    public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct) =>
+        ExecuteAsync("GetPostById", ct, async (activity, ct) =>
         {
-            activity?.SetTag("post.id", request.PostId);
-
-            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, cancellationToken);
+            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, ct).ConfigureAwait(false);
             GuardPostValid(post, request.PostId, activity);
-
             return post!;
         });
 
@@ -30,31 +27,8 @@ public class GetPostByIdQueryHandler(
         if (post == null)
         {
             _logger.LogWarning("Post with ID {PostId} not found", postId);
-            activity?.AddEvent(new ActivityEvent("PostNotFound", DateTimeOffset.UtcNow,
-                new ActivityTagsCollection { { "post.id", postId } }));
             activity?.SetStatus(ActivityStatusCode.Error, "Post not found");
             throw new NotFoundException<Guid>(postId);
-        }
-
-        if (post.Author == null)
-        {
-            _logger.LogWarning("Post {PostId} has no author.", post.Id);
-            activity?.SetStatus(ActivityStatusCode.Error, "Post has no author");
-            throw new InvalidOperationException($"Post {post.Id} has no author.");
-        }
-
-        if (string.IsNullOrEmpty(post.Author.FirstName))
-        {
-            _logger.LogWarning("Post {PostId} has empty first name.", post.Id);
-            activity?.SetStatus(ActivityStatusCode.Error, "Post has empty first name");
-            throw new InvalidOperationException($"Post {post.Id} has empty first name.");
-        }
-
-        if (string.IsNullOrEmpty(post.Author.LastName))
-        {
-            _logger.LogWarning("Post {PostId} has empty last name.", post.Id);
-            activity?.SetStatus(ActivityStatusCode.Error, "Post has empty last name");
-            throw new InvalidOperationException($"Post {post.Id} has empty last name.");
         }
     }
 

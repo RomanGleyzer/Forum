@@ -8,64 +8,67 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
     : IRequestHandler<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
+    private static readonly ActivitySource ActivitySource = new("Application.Queries");
     protected readonly ILogger _logger = logger;
 
-    public abstract Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken);
+    public abstract Task<TResponse> Handle(TRequest request, CancellationToken ct);
 
     protected async Task<TResponse> ExecuteAsync(
         string activityName,
-        TRequest request,
-        Func<Activity?, Task<TResponse>> action)
+        CancellationToken ct,
+        Func<Activity?, CancellationToken, Task<TResponse>> action)
     {
-        var stopwatch = Stopwatch.StartNew();
-        using var activity = new ActivitySource(GetType().Name).StartActivity(activityName, ActivityKind.Server);
-
-        SetTracingTags(activity, request);
+        using var activity = StartActivity(activityName);
 
         try
         {
-            var response = await action(activity);
-            LogSuccess(response, activity, stopwatch.ElapsedMilliseconds);
+            var response = await action(activity, ct).ConfigureAwait(false);
+            LogSuccess(response, activity);
             return response;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Handling {RequestType} was canceled.", typeof(TRequest).Name);
+            activity?.SetStatus(ActivityStatusCode.Error, "canceled");
+            throw;
         }
         catch (Exception ex)
         {
-            HandleException(ex, activity, request);
+            HandleException(ex, activity);
             throw;
         }
-        finally
-        {
-            stopwatch.Stop();
-            activity?.SetTag("operation.duration_ms", stopwatch.ElapsedMilliseconds);
-            activity?.SetTag("operation.end_time", DateTimeOffset.UtcNow);
-        }
     }
 
-    protected virtual void SetTracingTags(Activity? activity, TRequest request)
+    protected virtual Activity? StartActivity(string name)
     {
-        var correlationId = Activity.Current?.GetTagItem("correlation.id")?.ToString();
-        activity?.SetTag("correlation.id", correlationId ?? string.Empty);
+        var activity = ActivitySource.StartActivity(name, ActivityKind.Internal);
         activity?.SetTag("request.type", typeof(TRequest).Name);
-        activity?.SetTag("request.body", System.Text.Json.JsonSerializer.Serialize(request));
-        activity?.SetTag("operation.start_time", DateTimeOffset.UtcNow);
+        return activity;
     }
 
-    protected virtual void LogSuccess(TResponse response, Activity? activity, long? durationMs = null)
+    protected virtual void LogSuccess(TResponse response, Activity? activity)
     {
-        _logger.LogInformation("Successfully handled {RequestType}.", typeof(TRequest).Name);
-        activity?.SetTag("status", "success");
-        activity?.SetStatus(ActivityStatusCode.Ok);
-        activity?.AddEvent(new ActivityEvent("Success",
-            tags: new ActivityTagsCollection { { "response.type", typeof(TResponse).Name } }));
-        if (durationMs != null)
-            activity?.SetTag("operation.duration_ms", durationMs.Value);
+        activity?.SetTag("result.type", typeof(TResponse).Name);
+        if (response is null)
+            return;
 
-        LogEntitySuccess(response, activity);
+        switch (response)
+        {
+            case Array a:
+                activity?.SetTag("result.count", a.Length);
+                break;
+            case System.Collections.ICollection c:
+                activity?.SetTag("result.count", c.Count);
+                break;
+            default:
+                LogEntitySuccess(response, activity);
+                break;
+        }
     }
 
     protected virtual void LogEntitySuccess(TResponse response, Activity? activity) { }
 
-    protected void HandleException(Exception ex, Activity? activity, TRequest? request = default)
+    protected void HandleException(Exception ex, Activity? activity)
     {
         _logger.LogError(ex, "Error handling {RequestType}: {Message}", typeof(TRequest).Name, ex.Message);
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
@@ -74,9 +77,7 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
             tags: new ActivityTagsCollection
             {
                 { "exception.type", ex.GetType().FullName },
-                { "exception.message", ex.Message },
-                { "exception.stacktrace", ex.StackTrace ?? "" },
-                { "request.body", request != null ? System.Text.Json.JsonSerializer.Serialize(request) : string.Empty }
+                { "exception.message", ex.Message }
             }));
     }
 }

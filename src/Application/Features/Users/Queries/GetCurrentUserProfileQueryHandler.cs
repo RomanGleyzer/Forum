@@ -1,35 +1,48 @@
 ﻿using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Users;
-using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Application.Features.Users.Queries;
 
-public class GetCurrentUserProfileQueryHandler(
+public sealed class GetCurrentUserProfileQueryHandler(
     ILogger<GetCurrentUserProfileQueryHandler> logger,
     ICurrentUserService currentUser,
-    IMapper mapper,
     UserManager<ApplicationUser> userManager)
     : QueryHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser;
-    private readonly IMapper _mapper = mapper;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
 
-    public override Task<ApplicationUserDto> Handle(GetCurrentUserProfileQuery request, CancellationToken cancellationToken) =>
-        ExecuteAsync("GetCurrentUserProfile", request, async activity =>
+    public override Task<ApplicationUserDto> Handle(GetCurrentUserProfileQuery request, CancellationToken ct) =>
+        ExecuteAsync("GetCurrentUserProfile", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
-            activity?.SetTag("enduser.id", userId);
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new UnauthorizedAccessException("User is not authenticated.");
 
-            var user = await _userManager.FindByIdAsync(userId)
-                ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
+            var result = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => new ApplicationUserDto
+                {
+                    Id = u.Id,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Email = u.Email ?? string.Empty,
+                    About = u.About,
+                    DateOfBirth = u.DateOfBirth,
+                })
+                .SingleOrDefaultAsync(ct)
+                .ConfigureAwait(false) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
             activity?.AddEvent(new ActivityEvent("UserWasFound"));
-            return _mapper.Map<ApplicationUserDto>(user);
+            activity?.SetTag("user.id", result.Id);
+
+            return result;
         });
 }

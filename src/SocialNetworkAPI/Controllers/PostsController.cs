@@ -16,7 +16,7 @@ public sealed class PostsController(ISender sender) : ControllerBase
 {
     private readonly ISender _sender = sender;
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "GetPostById")]
     [ProducesResponseType(typeof(PostPageDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PostPageDto>> Get(Guid id, CancellationToken cancellationToken)
@@ -54,7 +54,10 @@ public sealed class PostsController(ISender sender) : ControllerBase
         [FromBody] CreatePostCommand command,
         CancellationToken cancellationToken)
     {
-        var post = await _sender.Send(command, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { id = post.Id }, post);
+        var postId = await _sender.Send(command, cancellationToken);
+        return CreatedAtRoute(
+            routeName: "GetPostById",
+            routeValues: new { id = postId },
+            value: new { id = postId });
     }
 }

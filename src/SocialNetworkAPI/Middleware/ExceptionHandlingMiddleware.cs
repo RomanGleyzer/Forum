@@ -6,6 +6,8 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
 {
     private readonly RequestDelegate _next = next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger = logger;
+    
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -22,19 +24,24 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        var status = exception is InvalidOperationException
+            ? StatusCodes.Status400BadRequest
+            : StatusCodes.Status500InternalServerError;
+
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = exception switch
+        context.Response.StatusCode = status;
+
+        var message = status == StatusCodes.Status500InternalServerError
+            ? "An unexpected error occurred."
+            : exception.Message;
+
+        var payload = new
         {
-            InvalidOperationException => StatusCodes.Status400BadRequest,
-            _ => StatusCodes.Status500InternalServerError
+            status,
+            message,
+            traceId = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier
         };
 
-        var message = context.Response.StatusCode == StatusCodes.Status500InternalServerError
-            ? "An unexpected error occurred." : exception.Message;
-
-        return context.Response.WriteAsync(
-            JsonSerializer.Serialize(new { context.Response.StatusCode, message }),
-            cancellationToken: context.RequestAborted
-        );
+        return context.Response.WriteAsJsonAsync(payload, JsonOptions, context.RequestAborted);
     }
 }

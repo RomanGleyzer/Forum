@@ -7,7 +7,6 @@ using SocialNetworkAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog Logging
 builder.Host.UseSerilog((context, config) =>
 {
     config
@@ -15,16 +14,18 @@ builder.Host.UseSerilog((context, config) =>
         .Enrich.With<ActivityEnricher>();
 });
 
-// Add services from Application & Infrastructure layers
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+}
 
-// Health checks
+builder.Services.AddControllers();
+
 builder.Services.AddHealthChecks().AddDbContextCheck<SocialNetworkDbContext>();
 
 var app = builder.Build();
@@ -35,17 +36,30 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseSerilogRequestLogging();
-app.UseHttpsRedirection();
-app.UseCors("Default");
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.GetLevel = (ctx, _, __) =>
+        ctx.Request.Path.StartsWithSegments("/health") ||
+        ctx.Request.Path.StartsWithSegments("/favicon.ico") ||
+        ctx.Request.Path.StartsWithSegments("/assets")
+            ? Serilog.Events.LogEventLevel.Debug
+            : Serilog.Events.LogEventLevel.Information;
+});
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseAuthentication();
-app.UseAuthorization();
+
+app.UseHttpsRedirection();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseCors("Default");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 app.MapHealthChecks("/health");
+
 
 app.Run();

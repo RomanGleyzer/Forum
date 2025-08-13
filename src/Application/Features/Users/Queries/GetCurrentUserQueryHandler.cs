@@ -2,19 +2,18 @@
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Users;
-using AutoMapper;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace Application.Features.Users.Queries;
 
-public class GetCurrentUserQueryHandler(
+public sealed class GetCurrentUserQueryHandler(
     ILogger<GetCurrentUserQueryHandler> logger,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager,
-    IMapper mapper,
     ICacheService cache)
     : QueryHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
 {
@@ -23,43 +22,45 @@ public class GetCurrentUserQueryHandler(
 
     private readonly ICurrentUserService _currentUser = currentUser;
     private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private readonly IMapper _mapper = mapper;
     private readonly ICacheService _cache = cache;
 
-    public override Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken) =>
-        ExecuteAsync("GetCurrentUser", request, async activity =>
+    public override Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken ct) =>
+        ExecuteAsync("GetCurrentUser", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
-            activity?.SetTag("enduser.id", userId);
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new UnauthorizedAccessException("User is not authenticated.");
 
-            var cacheKey = BuildKey(userId);
+            var cacheKey = $"{CachePrefix}:{userId}";
 
-            var cachedUser = await _cache.GetAsync<CurrentUserDto>(cacheKey, cancellationToken).ConfigureAwait(false);
-            if (cachedUser is not null)
+            var cached = await _cache.GetAsync<CurrentUserDto>(cacheKey, ct).ConfigureAwait(false);
+            if (cached is not null)
             {
-                activity?.AddEvent(new ActivityEvent("CacheHit", tags: new ActivityTagsCollection { { "cache.key", cacheKey } }));
-                return cachedUser;
+                activity?.AddEvent(new ActivityEvent("CacheHit"));
+                return cached;
             }
 
-            activity?.AddEvent(new ActivityEvent("CacheMiss", tags: new ActivityTagsCollection { { "cache.key", cacheKey } }));
+            activity?.AddEvent(new ActivityEvent("CacheMiss"));
 
-            var user = await _userManager.FindByIdAsync(userId)
-                ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
+            var result = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => new CurrentUserDto
+                {
+                    FirstName = u.FirstName,
+                    LastName = u.LastName
+                })
+                .SingleOrDefaultAsync(ct)
+                .ConfigureAwait(false) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
-            activity?.AddEvent(new ActivityEvent("UserWasFound"));
-            
-            var result = _mapper.Map<CurrentUserDto>(user);
+            await _cache.SetAsync(cacheKey, result, CacheTtl, ct).ConfigureAwait(false);
 
-            await _cache.SetAsync(cacheKey, result, CacheTtl, cancellationToken).ConfigureAwait(false);
-
-            activity?.AddEvent(new ActivityEvent("CacheSet", tags: new ActivityTagsCollection
-            {
-                { "cache.key", cacheKey },
-                { "cache.ttl.seconds", (int)CacheTtl.TotalSeconds }
-            }));
+            activity?.AddEvent(new ActivityEvent("CacheSet",
+                tags: new ActivityTagsCollection
+                {
+                    { "ttl.seconds", (int)CacheTtl.TotalSeconds }
+                }));
 
             return result;
         });
-
-    private static string BuildKey(string userId) => $"{CachePrefix}:{userId}";
 }
