@@ -1,73 +1,50 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
-    
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+﻿import { http, storage, dom, ui } from './shared.js';
 
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
+const disableForm = (form, on) => {
+    dom.$$('input,button', form).forEach(el => el.disabled = on);
+};
 
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    login: email,
-                    password: password
-                })
-            });
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = dom.$('#login-form');
+    const registerForm = dom.$('#register-form');
 
-            if (response.ok) {
-                const token = await response.text();
-                localStorage.setItem('token', token);
-                window.location.href = 'index.html';
-            } else {
-                const error = await response.json();
-                alert(error.message || 'Ошибка входа');
-            }
-        });
-    }
+    loginForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        disableForm(loginForm, true);
+        const email = dom.$('#login-email')?.value.trim();
+        const password = dom.$('#login-password')?.value;
 
-    const registerForm = document.getElementById('register-form');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        const { ok, json, resp } = await http.post('/api/auth/login', { login: email, password });
+        if (ok) {
+            const token = typeof json === 'string' ? json : (json?.token ?? await resp.text());
+            storage.setToken(token);
+            location.href = 'index.html';
+        } else {
+            ui.toast(json?.message || 'Ошибка входа');
+        }
+        disableForm(loginForm, false);
+    });
 
-            const firstName = document.getElementById('reg-firstname').value;
-            const lastName = document.getElementById('reg-lastname').value;
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-            const confirmPassword = document.getElementById('reg-confirm').value;
-            const dateOfBirth = document.getElementById('reg-birthdate').value;
+    registerForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        disableForm(registerForm, true);
 
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
+        const data = {
+            firstName: dom.$('#reg-firstname')?.value.trim(),
+            lastName: dom.$('#reg-lastname')?.value.trim(),
+            email: dom.$('#reg-email')?.value.trim(),
+            password: dom.$('#reg-password')?.value,
+            confirmedPassword: dom.$('#reg-confirm')?.value,
+            dateOfBirth: dom.$('#reg-birthdate')?.value,
+        };
+        if (data.password !== data.confirmedPassword) {
+            ui.toast('Пароли не совпадают'); disableForm(registerForm, false); return;
+        }
 
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    firstName: firstName,
-                    lastName: lastName,
-                    email: email,
-                    password: password,
-                    confirmedPassword: confirmPassword,
-                    dateOfBirth: dateOfBirth
-                })
-            });
+        const { ok, json } = await http.post('/api/auth/register', data);
+        if (ok) location.href = 'login.html';
+        else ui.toast(json?.message || 'Ошибка регистрации');
 
-            if (response.ok) {
-                window.location.href = 'login.html';
-            } else {
-                const error = await response.json();
-                alert(error.message || 'Ошибка регистрации');
-            }
-        });
-    }
+        disableForm(registerForm, false);
+    });
 });

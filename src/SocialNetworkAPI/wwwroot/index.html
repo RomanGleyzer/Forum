@@ -23,13 +23,13 @@
         <div class="row flex-nowrap">
             <!-- Sidebar left: навигация -->
             <aside class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-white border-end min-vh-100 sidebar-nav shadow-sm position-sticky" style="top: 0; height: 100vh; z-index: 100;">
-                <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-4">               
+                <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-4">
                     <div class="w-100 mb-4">
                         <div class="d-flex align-items-center p-2 rounded-3 user-block shadow-sm bg-light">
                             <img id="sidebar-avatar" src="images/user-default.png" alt="User avatar" class="rounded-circle me-3" width="44" height="44">
                             <div id="sidebar-username" class="fw-semibold"></div>
                         </div>
-                    </div>                  
+                    </div>
                     <ul class="nav nav-pills flex-column mb-auto w-100 gap-2">
                         <li class="nav-item w-100">
                             <a href="index.html" class="nav-link active d-flex align-items-center px-3">
@@ -71,7 +71,7 @@
                         <span class="fw-semibold fs-4">Лента</span>
                     </div>
                     <!-- Создание поста -->
-                    <section id="create-post" style="display:none;">
+                    <section id="create-post" class="d-none">
                         <div class="card mb-4 post-card">
                             <div class="card-body">
                                 <form id="post-form">
@@ -99,10 +99,10 @@
             </main>
         </div>
     </div>
-    <script src="js/feed.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/user.js"></script>
-    <script src="js/post.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="js/feed.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/user.js"></script>
+    <script type="module" src="js/post.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,42 +1,37 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('token');
+﻿import { storage, dom } from './shared.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+    const token = storage.getToken();
     const isAuth = !!token;
 
-    const currentPage = window.location.pathname.split('/').pop();
+    const currentPage = location.pathname.split('/').pop();
+    const protectedPages = new Set(['', 'index.html', 'profile.html']);
+    const publicPages = new Set(['login.html', 'register.html']);
 
-    const protectedPages = [
-        'index.html',
-        'profile.html',
-        ''
-    ];
-
-    const publicPages = [
-        'login.html',
-        'register.html'
-    ];
-
-    if (!isAuth && protectedPages.includes(currentPage)) {
-        window.location.href = 'login.html';
+    if (!isAuth && protectedPages.has(currentPage)) {
+        location.href = 'login.html';
+        return;
+    }
+    if (isAuth && publicPages.has(currentPage)) {
+        location.href = 'index.html';
         return;
     }
 
-    const loginNav = document.getElementById('login-nav');
-    const registerNav = document.getElementById('register-nav');
-    const profileNav = document.getElementById('profile-nav');
-    const logoutNav = document.getElementById('logout-nav');
-    const createPost = document.getElementById('create-post');
+    const loginNav = dom.$('#login-nav');
+    const registerNav = dom.$('#register-nav');
+    const profileNav = dom.$('#profile-nav');
+    const logoutNav = dom.$('#logout-nav');
+    const createPost = dom.$('#create-post');
 
-    if (loginNav) loginNav.style.display = isAuth ? 'none' : '';
-    if (registerNav) registerNav.style.display = isAuth ? 'none' : '';
-    if (profileNav) profileNav.style.display = isAuth ? '' : 'none';
-    if (logoutNav) logoutNav.style.display = isAuth ? '' : 'none';
-    if (createPost) createPost.style.display = isAuth ? '' : 'none';
+    dom.show(loginNav, !isAuth);
+    dom.show(registerNav, !isAuth);
+    dom.show(profileNav, isAuth);
+    dom.show(logoutNav, isAuth);
+    dom.show(createPost, isAuth);
 
-    if (logoutNav) {
-        logoutNav.addEventListener('click', (e) => {
-            e.preventDefault();
-            localStorage.removeItem('token');
-            window.location.href = 'login.html';
-        });
-    }
+    logoutNav?.addEventListener('click', (e) => {
+        e.preventDefault();
+        storage.clearToken();
+        location.href = 'login.html';
+    }, { passive: true });
 });
