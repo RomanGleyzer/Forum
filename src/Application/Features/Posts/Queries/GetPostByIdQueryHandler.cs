@@ -26,7 +26,7 @@ public sealed class GetPostByIdQueryHandler(
     {
         if (post == null)
         {
-            _logger.LogWarning("Post with ID {PostId} not found", postId);
+            Logger.LogWarning("Post with ID {PostId} not found", postId);
             activity?.SetStatus(ActivityStatusCode.Error, "Post not found");
             throw new NotFoundException<Guid>(postId);
         }

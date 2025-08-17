@@ -1,35 +1,43 @@
 ﻿using Application.Abstractions;
 using Domain.Entities;
 using Infrastructure.Persistence.Context;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence.Repositories;
 
-public class PostRepository(SocialNetworkDbContext dbContext, ILogger<PostRepository> logger) : IPostRepository
+public sealed class PostRepository(
+    SocialNetworkDbContext dbContext,
+    ILogger<PostRepository> logger) : IPostRepository
 {
-    private readonly SocialNetworkDbContext _dbContext = dbContext;
-    private readonly ILogger<PostRepository> _logger = logger;
-
-    public async Task AddAsync(Post post, CancellationToken cancellationToken = default)
+    public Task AddAsync(Post post, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Creating post with ID {PostId}", post.Id);
+        ArgumentNullException.ThrowIfNull(post);
 
-        await _dbContext.Posts.AddAsync(post, cancellationToken);
+        logger.LogDebug("Create Post: {PostId}", post.Id);
+        dbContext.Posts.Add(post);
+        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(Post post, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Deleting post with ID {PostId}", post.Id);
+        ArgumentNullException.ThrowIfNull(post);
 
-        _dbContext.Posts.Remove(post);
+        logger.LogDebug("Delete Post: {PostId}", post.Id);
+        dbContext.Posts.Remove(post);
         return Task.CompletedTask;
     }
 
     public Task UpdateAsync(Post post, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Updating post with ID {PostId}", post.Id);
+        ArgumentNullException.ThrowIfNull(post);
 
-        _dbContext.Posts.Update(post);
+        logger.LogDebug("Update Post: {PostId}", post.Id);
+
+        var entry = dbContext.Entry(post);
+        if (entry.State == EntityState.Detached)
+            dbContext.Posts.Update(post);
+
         return Task.CompletedTask;
     }
 }

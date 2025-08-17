@@ -39,7 +39,7 @@ public sealed class RegisterUserCommandHandler(
                 throw new ValidationException(failures);
             }
 
-            _logger.LogInformation("User created successfully: {UserId}", user.Id);
+            Logger.LogInformation("User created successfully: {UserId}", user.Id);
             activity?.SetTag("user.id", user.Id);
             activity?.AddEvent(new ActivityEvent("UserRegistered"));
 

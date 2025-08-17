@@ -24,8 +24,8 @@ public sealed class GetUserPostsQueryHandler(
 
     protected override void LogEntitySuccess(IReadOnlyCollection<PostPageDto> posts, Activity? activity)
     {
-        if (_logger.IsEnabled(LogLevel.Information))
-            _logger.LogInformation("Found {Count} posts for user.", posts.Count);
+        if (Logger.IsEnabled(LogLevel.Information))
+            Logger.LogInformation("Found {Count} posts for user.", posts.Count);
 
         activity?.SetTag("result.count", posts.Count);
     }

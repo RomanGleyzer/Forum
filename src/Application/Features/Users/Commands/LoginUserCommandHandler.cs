@@ -52,7 +52,7 @@ public sealed class LoginUserCommandHandler(
 
     private void ThrowUnauthorized(string message, Activity? activity)
     {
-        _logger.LogWarning(message);
+        Logger.LogWarning(message);
         activity?.SetStatus(ActivityStatusCode.Error, message);
         throw new UnauthorizedAccessException(message);
     }

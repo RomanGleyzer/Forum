@@ -9,7 +9,7 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
     where TRequest : IRequest<TResponse>
 {
     private static readonly ActivitySource ActivitySource = new("Application.Queries");
-    protected readonly ILogger _logger = logger;
+    protected ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public abstract Task<TResponse> Handle(TRequest request, CancellationToken ct);
 
@@ -24,12 +24,13 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
         {
             var response = await action(activity, ct).ConfigureAwait(false);
             LogSuccess(response, activity);
+            activity?.SetStatus(ActivityStatusCode.Ok);
             return response;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            _logger.LogWarning("Handling {RequestType} was canceled.", typeof(TRequest).Name);
-            activity?.SetStatus(ActivityStatusCode.Error, "canceled");
+            Logger.LogWarning("Handling {RequestType} was canceled.", typeof(TRequest).Name);
+            activity?.SetStatus(ActivityStatusCode.Unset, "canceled");
             throw;
         }
         catch (Exception ex)
@@ -66,11 +67,9 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
         }
     }
 
-    protected virtual void LogEntitySuccess(TResponse response, Activity? activity) { }
-
     protected void HandleException(Exception ex, Activity? activity)
     {
-        _logger.LogError(ex, "Error handling {RequestType}: {Message}", typeof(TRequest).Name, ex.Message);
+        Logger.LogError(ex, "Error handling {RequestType}: {Message}", typeof(TRequest).Name, ex.Message);
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
         activity?.AddEvent(new ActivityEvent(
             "exception",
@@ -80,4 +79,6 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
                 { "exception.message", ex.Message }
             }));
     }
+
+    protected virtual void LogEntitySuccess(TResponse response, Activity? activity) { }
 }

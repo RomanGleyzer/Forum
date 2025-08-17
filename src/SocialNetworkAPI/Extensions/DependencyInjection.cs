@@ -1,4 +1,5 @@
-﻿using Application.Features.Posts.Commands;
+﻿using System.Reflection;
+using Application.Features.Posts.Commands;
 using FluentValidation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -9,27 +10,41 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddAutoMapper(typeof(CreatePostCommand).Assembly);
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(CreatePostCommand).Assembly));
-        services.AddValidatorsFromAssembly(typeof(CreatePostCommand).Assembly);
+        var entryAssembly = Assembly.GetEntryAssembly();
+        var serviceName = entryAssembly?.GetName().Name ?? "SocialNetworkAPI";
+        var serviceVersion =
+            entryAssembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? entryAssembly?.GetName().Version?.ToString();
+
+        var appAssembly = typeof(CreatePostCommand).Assembly;
+
+        services.AddAutoMapper(appAssembly);
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(appAssembly));
+        services.AddValidatorsFromAssembly(appAssembly);
 
         services.AddOpenTelemetry()
             .WithTracing(tracing =>
             {
                 tracing
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("SocialNetworkAPI"))
-                    .AddAspNetCoreInstrumentation()
+                    .SetResourceBuilder(
+                        ResourceBuilder.CreateDefault()
+                            .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+                    .AddAspNetCoreInstrumentation(o =>
+                    {
+                        o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
+                    })
                     .AddHttpClientInstrumentation()
-                    .AddSource("GetCurrentUserProfileQueryHandler")
-                    .AddSource("GetCurrentUserQueryHandler")
-                    .AddSource("UpdateUserCommandHandler")
-                    .AddSource("CreatePostCommandHandler")
-                    .AddSource("GetPostByIdQueryHandler")
-                    .AddSource("GetPostsByCursorQueryHandler")
-                    .AddSource("GetUserPostsQueryHandler")
-                    .AddSource("RegisterUserCommandHandler")
-                    .AddSource("LoginUserCommandHandler")
-                    .AddConsoleExporter();
+                    .AddSource(
+                        "GetCurrentUserProfileQueryHandler",
+                        "GetCurrentUserQueryHandler",
+                        "UpdateUserCommandHandler",
+                        "CreatePostCommandHandler",
+                        "GetPostByIdQueryHandler",
+                        "GetPostsByCursorQueryHandler",
+                        "GetUserPostsQueryHandler",
+                        "RegisterUserCommandHandler",
+                        "LoginUserCommandHandler")
+                    .AddConsoleExporter(); // только в Development
             });
 
         return services;

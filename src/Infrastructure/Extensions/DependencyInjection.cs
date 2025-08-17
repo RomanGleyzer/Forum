@@ -14,25 +14,47 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 namespace Infrastructure.Extensions;
 
 public static class DependencyInjection
 {
+    private const string CorsDefaultPolicy = "Default";
+
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration config)
     {
         var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (allowedOrigins is null || allowedOrigins.Length == 0)
+            throw new InvalidOperationException("Cors:AllowedOrigins must be configured and non-empty.");
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy(CorsDefaultPolicy, policy =>
+            {
+                policy.WithOrigins(allowedOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            });
+        });
+
         var conString = config.GetConnectionString("PostgreSQLConnection")
             ?? throw new InvalidOperationException("PostgreSQLConnection string is missing.");
 
         services.AddDbContext<SocialNetworkDbContext>(options =>
-            options.UseNpgsql(conString));
+            options.UseNpgsql(conString, npgsql =>
+            {
+                npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+            }));
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
@@ -41,20 +63,6 @@ public static class DependencyInjection
         })
         .AddEntityFrameworkStores<SocialNetworkDbContext>()
         .AddDefaultTokenProviders();
-
-        services.AddAuthentication();
-        services.AddAuthorization();
-
-        services.AddCors(options =>
-        {
-            options.AddPolicy("Default", policy =>
-            {
-                policy.WithOrigins(allowedOrigins ?? [])
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            });
-        });
 
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
@@ -66,20 +74,36 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Redis connection string is missing.");
 
         services.AddSingleton<IConnectionMultiplexer>(_ =>
-            ConnectionMultiplexer.Connect(redisConnectionString));
+        {
+            var options = ConfigurationOptions.Parse(redisConnectionString);
+            options.AbortOnConnectFail = false;
+            return ConnectionMultiplexer.Connect(options);
+        });
+
+        services.AddSingleton<IDistributedCache>(sp =>
+        {
+            var mux = sp.GetRequiredService<IConnectionMultiplexer>();
+            return new RedisCache(new RedisCacheOptions
+            {
+                InstanceName = "app:",
+                ConnectionMultiplexerFactory = () => Task.FromResult(mux)
+            });
+        });
 
         services.AddSingleton<ICacheService, RedisCacheService>();
-
-        services.AddStackExchangeRedisCache(options =>
-        {
-            options.Configuration = redisConnectionString;
-            options.InstanceName = "app:";
-        });
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        services.Configure<JwtOptions>(config.GetSection(JwtOptions.SectionName));
+        services.AddOptions<JwtOptions>()
+            .Bind(config.GetSection(JwtOptions.SectionName))
+            .Validate(static o =>
+                !string.IsNullOrWhiteSpace(o.Key) &&
+                !string.IsNullOrWhiteSpace(o.Issuer) &&
+                !string.IsNullOrWhiteSpace(o.Audience),
+                "JWT options must contain non-empty Key, Issuer and Audience.")
+            .ValidateOnStart();
+
         services.AddSingleton<IJwtTokenFactory, JwtTokenFactory>();
 
         return services;
@@ -92,50 +116,54 @@ public static class DependencyInjection
 
         var keyBytes = Encoding.UTF8.GetBytes(jwtOptions.Key);
 
-        services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.MapInboundClaims = false;
-
-            options.TokenValidationParameters = new TokenValidationParameters
+        services
+            .AddAuthentication(options =>
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtOptions.Issuer,
-                ValidAudience = jwtOptions.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-                ClockSkew = TimeSpan.Zero,
-                ValidTypes = ["JWT"]
-            };
-
-            options.Events = new JwtBearerEvents
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
             {
-                OnAuthenticationFailed = ctx =>
-                {
-                    ctx.HttpContext.RequestServices
-                       .GetRequiredService<ILoggerFactory>()
-                       .CreateLogger("JWT")
-                       .LogError(ctx.Exception, "JWT auth failed");
-                    return Task.CompletedTask;
-                },
-                OnChallenge = ctx =>
-                {
-                    var logger = ctx.HttpContext.RequestServices
-                       .GetRequiredService<ILoggerFactory>()
-                       .CreateLogger("JWT");
-                    logger.LogWarning("JWT challenge: {Error} {Description}", ctx.Error, ctx.ErrorDescription);
-                    return Task.CompletedTask;
-                }
-            };
-        });
+                options.MapInboundClaims = false;
 
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidAudience = jwtOptions.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+                    ClockSkew = TimeSpan.Zero,
+                    ValidTypes = ["JWT"],
 
+                    RoleClaimType = "role",
+                    NameClaimType = JwtRegisteredClaimNames.Sub
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = ctx =>
+                    {
+                        ctx.HttpContext.RequestServices
+                           .GetRequiredService<ILoggerFactory>()
+                           .CreateLogger("JWT")
+                           .LogError(ctx.Exception, "JWT auth failed");
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = ctx =>
+                    {
+                        var logger = ctx.HttpContext.RequestServices
+                           .GetRequiredService<ILoggerFactory>()
+                           .CreateLogger("JWT");
+                        logger.LogWarning("JWT challenge: {Error} {Description}", ctx.Error, ctx.ErrorDescription);
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+        services.AddAuthorization();
         return services;
     }
 }
