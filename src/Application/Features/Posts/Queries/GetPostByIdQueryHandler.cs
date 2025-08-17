@@ -37,6 +37,5 @@ public sealed class GetPostByIdQueryHandler(
         activity?.SetTag("post.id", response.Id);
         activity?.SetTag("post.content_length", response.Content?.Length ?? 0);
         activity?.SetTag("post.author_id", response.Author?.Id);
-        activity?.SetTag("post.has_author", response.Author != null);
     }
 }

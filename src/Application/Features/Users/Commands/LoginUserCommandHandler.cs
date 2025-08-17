@@ -24,21 +24,14 @@ public sealed class LoginUserCommandHandler(
             ApplicationUser? user = null;
 
             if (!string.IsNullOrWhiteSpace(request.Login))
-            {
-                user = await _userManager.FindByEmailAsync(request.Login).ConfigureAwait(false)
-                       ?? await _userManager.FindByNameAsync(request.Login).ConfigureAwait(false);
-            }
+                user = await _userManager.FindByEmailAsync(request.Login).ConfigureAwait(false);
 
             if (user is null)
-            {
                 ThrowUnauthorized("Invalid username or password.", activity);
-            }
 
             var passwordOk = await _userManager.CheckPasswordAsync(user!, request.Password).ConfigureAwait(false);
             if (!passwordOk)
-            {
                 ThrowUnauthorized("Invalid username or password.", activity);
-            }
 
             var claims = new[]
             {

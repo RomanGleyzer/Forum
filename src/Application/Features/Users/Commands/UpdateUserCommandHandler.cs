@@ -79,6 +79,9 @@ public class UpdateUserCommandHandler(
             return _mapper.Map<ApplicationUserDto>(user);
         });
 
+    private static bool EqualsOrdinal(string a, string b) => string.Equals(a, b, StringComparison.Ordinal);
+    private static string Normalize(string? s) => (s ?? string.Empty).Trim();
+
     private static (bool anyChanged, bool nameChanged) ApplyChanges(ApplicationUser user, UpdateUserCommand request)
     {
         var oldFirst = Normalize(user.FirstName);
@@ -108,7 +111,4 @@ public class UpdateUserCommandHandler(
 
         return (true, nameChanged);
     }
-
-    private static bool EqualsOrdinal(string a, string b) => string.Equals(a, b, StringComparison.Ordinal);
-    private static string Normalize(string? s) => (s ?? string.Empty).Trim();
 }
