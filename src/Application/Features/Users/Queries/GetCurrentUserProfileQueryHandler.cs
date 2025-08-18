@@ -15,8 +15,8 @@ public sealed class GetCurrentUserProfileQueryHandler(
     UserManager<ApplicationUser> userManager)
     : QueryHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
 {
-    private readonly ICurrentUserService _currentUser = currentUser;
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
 
     public override Task<ApplicationUserDto> Handle(GetCurrentUserProfileQuery request, CancellationToken ct) =>
         ExecuteAsync("GetCurrentUserProfile", ct, async (activity, ct) =>

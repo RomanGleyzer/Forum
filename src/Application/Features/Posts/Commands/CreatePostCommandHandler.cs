@@ -15,10 +15,10 @@ public sealed class CreatePostCommandHandler(
     IUnitOfWork unitOfWork)
     : QueryHandlerBase<CreatePostCommand, Guid>(logger)
 {
-    private readonly ICurrentUserService _currentUser = currentUser;
-    private readonly IMapper _mapper = mapper;
-    private readonly IPostRepository _repository = repository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+    private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+    private readonly IPostRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+    private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
 
     public override Task<Guid> Handle(CreatePostCommand request, CancellationToken ct) =>
         ExecuteAsync("CreatePost", ct, async (activity, ct) =>

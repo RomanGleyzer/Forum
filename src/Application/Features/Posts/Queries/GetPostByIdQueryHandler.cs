@@ -12,7 +12,7 @@ public sealed class GetPostByIdQueryHandler(
     ILogger<GetPostByIdQueryHandler> logger)
     : QueryHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
 {
-    private readonly IPostReadModelRepository _repository = repository;
+    private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
 
     public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct) =>
         ExecuteAsync("GetPostById", ct, async (activity, ct) =>

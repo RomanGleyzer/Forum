@@ -15,8 +15,8 @@ public sealed class LoginUserCommandHandler(
     IJwtTokenFactory jwtTokenFactory)
     : QueryHandlerBase<LoginUserCommand, string>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private readonly IJwtTokenFactory _jwtFactory = jwtTokenFactory;
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly IJwtTokenFactory _jwtFactory = jwtTokenFactory ?? throw new ArgumentNullException(nameof(jwtTokenFactory));
 
     public override Task<string> Handle(LoginUserCommand request, CancellationToken ct) =>
         ExecuteAsync("LoginUser", ct, async (activity, ct) =>

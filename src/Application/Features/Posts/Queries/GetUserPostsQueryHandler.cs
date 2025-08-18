@@ -11,7 +11,7 @@ public sealed class GetUserPostsQueryHandler(
     ILogger<GetUserPostsQueryHandler> logger)
     : QueryHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
 {
-    private readonly IPostReadModelRepository _repository = repository;
+    private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
 
     public override Task<IReadOnlyCollection<PostPageDto>> Handle(GetUserPostsQuery request, CancellationToken ct) =>
         ExecuteAsync("GetUserPosts", ct, async (activity, ct) =>

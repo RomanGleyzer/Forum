@@ -11,7 +11,7 @@ public sealed class GetPostsByCursorQueryHandler(
     ILogger<GetPostsByCursorQueryHandler> logger)
     : QueryHandlerBase<GetPostsByCursorQuery, IReadOnlyList<PostPageDto>>(logger)
 {
-    private readonly IPostReadModelRepository _repository = repository;
+    private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
 
     public override Task<IReadOnlyList<PostPageDto>> Handle(GetPostsByCursorQuery request, CancellationToken ct) =>
         ExecuteAsync("GetPostsByCursor", ct, async (activity, ct) =>

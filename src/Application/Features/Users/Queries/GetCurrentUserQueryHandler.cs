@@ -20,9 +20,9 @@ public sealed class GetCurrentUserQueryHandler(
     private const string CachePrefix = "user:min";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
 
-    private readonly ICurrentUserService _currentUser = currentUser;
-    private readonly UserManager<ApplicationUser> _userManager = userManager;
-    private readonly ICacheService _cache = cache;
+    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly ICacheService _cache = cache ?? throw new ArgumentNullException(nameof(cache));
 
     public override Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken ct) =>
         ExecuteAsync("GetCurrentUser", ct, async (activity, ct) =>

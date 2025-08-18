@@ -4,16 +4,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Context;
 
-public class SocialNetworkDbContext(DbContextOptions<SocialNetworkDbContext> options)
+public sealed class SocialNetworkDbContext(DbContextOptions<SocialNetworkDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
-    public DbSet<Post> Posts { get; set; }
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
-    public DbSet<Comment> Comments { get; set; }
-
-    protected override void OnModelCreating(ModelBuilder builder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(builder);
-        builder.ApplyConfigurationsFromAssembly(typeof(SocialNetworkDbContext).Assembly);
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(SocialNetworkDbContext).Assembly);
     }
 }

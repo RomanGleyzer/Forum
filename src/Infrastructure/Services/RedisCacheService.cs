@@ -6,10 +6,10 @@ using StackExchange.Redis;
 
 namespace Infrastructure.Services;
 
-public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheService> logger) : ICacheService
+public sealed class RedisCacheService : ICacheService
 {
-    private readonly IDatabase _database = redis.GetDatabase();
-    private readonly ILogger<RedisCacheService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IDatabase _database;
+    private readonly ILogger<RedisCacheService> _logger;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -18,10 +18,15 @@ public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<Redi
         WriteIndented = false
     };
 
+    public RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheService> logger)
+    {
+        ArgumentNullException.ThrowIfNull(redis);
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _database = redis.GetDatabase();
+    }
+
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (string.IsNullOrWhiteSpace(key))
         {
             _logger.LogWarning("Attempted to get a value with an empty Redis key.");
@@ -30,8 +35,10 @@ public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<Redi
 
         try
         {
-            var value = await _database.StringGetAsync(key).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
+            var value = await _database
+                .StringGetAsync(key)
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             if (value.IsNullOrEmpty) return default;
 
@@ -48,15 +55,14 @@ public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<Redi
                     "Corrupted JSON for key '{Key}' in Redis. Deleting the key to self-heal. Target type: {Type}.",
                     key, typeof(T).Name);
 
-                try
-                {
-                    await _database.KeyDeleteAsync(key, CommandFlags.None).ConfigureAwait(false);
-                }
-                catch (Exception cleanupEx)
-                {
-                    _logger.LogDebug(cleanupEx, "Failed to delete corrupted key '{Key}' from Redis.", key);
-                }
-
+                _ = _database.KeyDeleteAsync(key, CommandFlags.FireAndForget);
+                return default;
+            }
+            catch (NotSupportedException nsex)
+            {
+                _logger.LogWarning(nsex,
+                    "Type not supported for JSON deserialization for key '{Key}'. Target type: {Type}.",
+                    key, typeof(T));
                 return default;
             }
         }
@@ -78,17 +84,15 @@ public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<Redi
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (string.IsNullOrWhiteSpace(key))
         {
             _logger.LogWarning("Attempted to set a value with an empty Redis key.");
             return;
         }
 
-        if (expiration.HasValue && expiration.Value < TimeSpan.Zero)
+        if (expiration is { } e && e <= TimeSpan.Zero)
         {
-            _logger.LogWarning("Negative expiration provided for key '{Key}'. Ignoring TTL.", key);
+            _logger.LogWarning("Non-positive expiration provided for key '{Key}'. Ignoring TTL.", key);
             expiration = null;
         }
 
@@ -96,8 +100,10 @@ public sealed class RedisCacheService(IConnectionMultiplexer redis, ILogger<Redi
         {
             var bytes = JsonSerializer.SerializeToUtf8Bytes(value, SerializerOptions);
 
-            await _database.StringSetAsync(key, bytes, expiration).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
+            await _database
+                .StringSetAsync(key, bytes, expiration)
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

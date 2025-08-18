@@ -75,8 +75,9 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
             "exception",
             tags: new ActivityTagsCollection
             {
-                { "exception.type", ex.GetType().FullName },
-                { "exception.message", ex.Message }
+                ["exception.type"] = ex.GetType().FullName!,
+                ["exception.message"] = ex.Message,
+                ["exception.stacktrace"] = ex.ToString()
             }));
     }
 
