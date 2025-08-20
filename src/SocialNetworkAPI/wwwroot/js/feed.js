@@ -1,6 +1,7 @@
 ﻿import { http, dom, fmt, ui } from './shared.js';
 
-let cursor = null;
+let cursorCreatedAt = null;
+let cursorId = null;
 let endReached = false;
 let inflightCtrl = null;
 let loading = false;
@@ -39,7 +40,10 @@ async function loadPosts() {
     dom.show(spinner, true);
 
     const params = new URLSearchParams();
-    if (cursor) params.append('cursor', cursor);
+    if (cursorCreatedAt && cursorId) {
+        params.append('cursorCreatedAt', cursorCreatedAt);
+        params.append('cursorId', cursorId);
+    }
     params.append('take', String(take));
 
     const res = await http.get(`/api/posts?${params}`, { signal: inflightCtrl.signal });
@@ -54,15 +58,18 @@ async function loadPosts() {
     if (!posts.length) {
         endReached = true;
         ensureEndOfFeed();
-        if (!cursor) dom.show(noPostsMsg, true);
+        if (!cursorCreatedAt || !cursorId) dom.show(noPostsMsg, true);
         return;
     }
 
     dom.show(noPostsMsg, false);
     renderPosts(posts);
-    cursor = posts[posts.length - 1]?.creationDate ?? cursor;
-}
 
+    // обновляем курсор по последнему посту на странице
+    const last = posts[posts.length - 1];
+    cursorCreatedAt = last?.creationDate ?? cursorCreatedAt;
+    cursorId = last?.id ?? cursorId;
+}
 
 function renderPosts(posts) {
     const frag = dom.fragment();
@@ -97,7 +104,9 @@ function renderFeaturedComment(comment) {
     <div class="mt-3 p-2 rounded bg-light">
       <div class="small text-muted mb-1">Комментарий:</div>
       <div>${fmt.escape(comment.content)}</div>
-      <div class="text-end small text-muted mt-1">${fmt.escape(comment.author?.displayName ?? '')}</div>
+      <div class="text-end small text-muted mt-1">
+        ${fmt.escape(`${comment.author?.firstName ?? ''} ${comment.author?.lastName ?? ''}`.trim())}
+      </div>
     </div>`;
 }
 

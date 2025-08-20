@@ -28,11 +28,12 @@ public sealed class PostsController(ISender sender) : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<PostPageDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetPostsByCursor(
-        [FromQuery] DateTime? cursor,
+        [FromQuery] DateTime? cursorCreatedAt,
+        [FromQuery] Guid? cursorId,
         [FromQuery, Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
-        var posts = await _sender.Send(new GetPostsByCursorQuery(cursor, take), cancellationToken);
+        var posts = await _sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);
         return Ok(posts);
     }
 

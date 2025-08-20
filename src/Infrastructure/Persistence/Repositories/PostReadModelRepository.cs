@@ -69,22 +69,24 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
     }
 
     public async Task<IReadOnlyList<PostPageDto>> GetPagePostsCursorAsync(
-        DateTime? cursor = null,
+        DateTimeOffset? cursorCreatedAt = null,
+        Guid? cursorId = null,
         int take = 10,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         var query = _dbContext.Posts.AsNoTracking();
 
-        if (cursor.HasValue)
+        if (cursorCreatedAt.HasValue && cursorId.HasValue)
         {
-            query = query.Where(post => post.CreationDate < cursor.Value);
+            query = query.Where(p => p.CreationDate < cursorCreatedAt.Value
+                || (p.CreationDate == cursorCreatedAt.Value && p.Id.CompareTo(cursorId.Value) < 0));
         }
 
         return await query
-            .OrderByDescending(post => post.CreationDate)
-            .ThenByDescending(post => post.Id)
+            .OrderByDescending(p => p.CreationDate)
+            .ThenByDescending(p => p.Id)
             .Take(take)
             .Select(PostPageSelector)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(ct);
     }
 }
