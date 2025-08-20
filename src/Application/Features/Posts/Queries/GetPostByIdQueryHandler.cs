@@ -17,7 +17,7 @@ public sealed class GetPostByIdQueryHandler(
     public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct) =>
         ExecuteAsync("GetPostById", ct, async (activity, ct) =>
         {
-            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, ct).ConfigureAwait(false);
+            var post = await _repository.GetByIdWithDetailsAsync(request.PostId, ct);
             GuardPostValid(post, request.PostId, activity);
             return post!;
         });

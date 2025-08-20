@@ -29,86 +29,92 @@ public class UpdateUserCommandHandler(
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
     public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken ct) =>
-        ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
-        {
-            var userId = _currentUser.UserId;
-            activity?.SetTag("enduser.id", userId);
-
-            var user = await _userManager.FindByIdAsync(userId).ConfigureAwait(false) 
-                ?? throw new UnauthorizedAccessException("User is not found.");
-            
-            var (anyChanged, nameChanged) = ApplyChanges(user, request);
-
-            if (!anyChanged)
-            {
-                activity?.AddEvent(new ActivityEvent("NoOpUpdate"));
-                return _mapper.Map<ApplicationUserDto>(user);
-            }
-
-            var result = await _userManager.UpdateAsync(user).ConfigureAwait(false);
-
-            if (!result.Succeeded)
-            {
-                var failures = result.Errors
-                    .Select(e => new ValidationFailure(e.Code, e.Description))
-                    .ToArray();
-
-                activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
-                activity?.SetTag("validation.errors.count", failures.Length);
-                throw new ValidationException(failures);
-            }
-
-            if (nameChanged)
-            {
-                await _cache.SetAsync(
-                        $"{MinKeyPrefix}:{userId}",
-                        new CurrentUserDto
-                        {
-                            FirstName = user.FirstName ?? string.Empty,
-                            LastName = user.LastName ?? string.Empty
-                        },
-                        MinTtl,
-                        ct
-                    )
-                    .ConfigureAwait(false);
-
-                activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
-            }
-
-            activity?.AddEvent(new ActivityEvent("UserUpdated"));
-            return _mapper.Map<ApplicationUserDto>(user);
-        });
-
-    private static bool EqualsOrdinal(string a, string b) => string.Equals(a, b, StringComparison.Ordinal);
-    private static string Normalize(string? s) => (s ?? string.Empty).Trim();
-
-    private static (bool anyChanged, bool nameChanged) ApplyChanges(ApplicationUser user, UpdateUserCommand request)
+    ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
     {
-        var oldFirst = Normalize(user.FirstName);
-        var oldLast = Normalize(user.LastName);
-        var oldEmail = Normalize(user.Email);
-        var oldAbout = Normalize(user.About);
+        var userId = _currentUser.UserId;
+        activity?.SetTag("enduser.id", userId);
+
+        var user = await _userManager.FindByIdAsync(userId)
+                     ?? throw new UnauthorizedAccessException("User not found.");
+
+        var (anyChanged, nameChanged, emailChanged) = ApplyChanges(user, request);
+
+        if (!anyChanged)
+        {
+            activity?.AddEvent(new ActivityEvent("NoOpUpdate"));
+            return _mapper.Map<ApplicationUserDto>(user);
+        }
+
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            var failures = result.Errors
+                .Select(e => new ValidationFailure(e.Code, e.Description))
+                .ToArray();
+
+            activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
+            activity?.SetTag("validation.errors.count", failures.Length);
+            throw new ValidationException(failures);
+        }
+
+        if (nameChanged)
+        {
+            await _cache.SetAsync(
+                $"{MinKeyPrefix}:{userId}",
+                new CurrentUserDto
+                {
+                    FirstName = user.FirstName ?? string.Empty,
+                    LastName = user.LastName ?? string.Empty
+                },
+                MinTtl,
+                ct);
+
+            activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
+        }
+
+        if (emailChanged)
+            activity?.AddEvent(new ActivityEvent("UserNameEmailUpdated"));
+
+        activity?.AddEvent(new ActivityEvent("UserUpdated"));
+        return _mapper.Map<ApplicationUserDto>(user);
+    });
+
+
+    private static string? NormalizeOrNull(string? s)
+        => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private static bool EqualsOrdinal(string? a, string? b)
+        => string.Equals(a, b, StringComparison.Ordinal);
+
+    private static (bool anyChanged, bool nameChanged, bool emailChanged) ApplyChanges(ApplicationUser user, UpdateUserCommand request)
+    {
+        var oldFirst = NormalizeOrNull(user.FirstName);
+        var oldLast = NormalizeOrNull(user.LastName);
+        var oldEmail = NormalizeOrNull(user.Email);
+        var oldAbout = NormalizeOrNull(user.About);
         var oldDob = user.DateOfBirth;
 
-        var newFirst = Normalize(request.FirstName);
-        var newLast = Normalize(request.LastName);
-        var newEmail = Normalize(request.Email);
-        var newAbout = Normalize(request.About);
+        var newFirst = NormalizeOrNull(request.FirstName);
+        var newLast = NormalizeOrNull(request.LastName);
+        var newEmail = NormalizeOrNull(request.Email);
+        var newAbout = NormalizeOrNull(request.About);
         var newDob = request.DateOfBirth;
 
         var nameChanged = !EqualsOrdinal(oldFirst, newFirst) || !EqualsOrdinal(oldLast, newLast);
+        var emailChanged = !EqualsOrdinal(oldEmail, newEmail);
         var anyChanged = nameChanged
-                       || !EqualsOrdinal(oldEmail, newEmail)
-                       || !EqualsOrdinal(oldAbout, newAbout)
-                       || oldDob != newDob;
+                        || emailChanged
+                        || !EqualsOrdinal(oldAbout, newAbout)
+                        || oldDob != newDob;
 
-        if (!anyChanged) return (false, false);
+        if (!anyChanged) return (false, false, false);
 
         if (nameChanged) { user.FirstName = newFirst; user.LastName = newLast; }
-        if (!EqualsOrdinal(oldEmail, newEmail)) user.Email = newEmail;
+        if (emailChanged) { user.Email = newEmail; user.UserName = newEmail; }
         if (!EqualsOrdinal(oldAbout, newAbout)) user.About = newAbout;
         if (oldDob != newDob) user.DateOfBirth = newDob;
 
-        return (true, nameChanged);
+        return (true, nameChanged, emailChanged);
     }
 }

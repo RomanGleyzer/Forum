@@ -16,8 +16,7 @@ public sealed class GetPostsByCursorQueryHandler(
     public override Task<IReadOnlyList<PostPageDto>> Handle(GetPostsByCursorQuery request, CancellationToken ct) =>
         ExecuteAsync("GetPostsByCursor", ct, async (activity, ct) =>
         {
-            var posts = await _repository.GetPagePostsCursorAsync(request.Cursor, cancellationToken: ct)
-                .ConfigureAwait(false);
+            var posts = await _repository.GetPagePostsCursorAsync(request.Cursor, cancellationToken: ct);
 
             return posts;
         });

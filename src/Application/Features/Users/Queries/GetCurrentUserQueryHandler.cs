@@ -50,10 +50,9 @@ public sealed class GetCurrentUserQueryHandler(
                     FirstName = u.FirstName,
                     LastName = u.LastName
                 })
-                .SingleOrDefaultAsync(ct)
-                .ConfigureAwait(false) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
+                .SingleOrDefaultAsync(ct) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
-            await _cache.SetAsync(cacheKey, result, CacheTtl, ct).ConfigureAwait(false);
+            await _cache.SetAsync(cacheKey, result, CacheTtl, ct);
 
             activity?.AddEvent(new ActivityEvent("CacheSet",
                 tags: new ActivityTagsCollection

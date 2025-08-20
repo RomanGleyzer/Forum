@@ -24,20 +24,30 @@ public sealed class LoginUserCommandHandler(
             ApplicationUser? user = null;
 
             if (!string.IsNullOrWhiteSpace(request.Login))
-                user = await _userManager.FindByEmailAsync(request.Login).ConfigureAwait(false);
+                user = await _userManager.FindByEmailAsync(request.Login);
 
             if (user is null)
                 ThrowUnauthorized("Invalid username or password.", activity);
 
-            var passwordOk = await _userManager.CheckPasswordAsync(user!, request.Password).ConfigureAwait(false);
-            if (!passwordOk)
+            if (_userManager.SupportsUserLockout && await _userManager.IsLockedOutAsync(user!))
                 ThrowUnauthorized("Invalid username or password.", activity);
+
+            var passwordOk = await _userManager.CheckPasswordAsync(user!, request.Password);
+            if (!passwordOk)
+            {
+                if (_userManager.SupportsUserLockout)
+                    await _userManager.AccessFailedAsync(user!);
+
+                ThrowUnauthorized("Invalid username or password.", activity);
+            }
+
+            if (_userManager.SupportsUserLockout)
+                await _userManager.ResetAccessFailedCountAsync(user!);
 
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user!.Id),
                 new Claim(ClaimTypes.NameIdentifier, user!.Id),
-                new Claim(ClaimTypes.Name, user!.UserName ?? string.Empty),
                 new Claim(ClaimTypes.Email, user!.Email ?? string.Empty)
             };
 
@@ -53,7 +63,6 @@ public sealed class LoginUserCommandHandler(
     private void ThrowUnauthorized(string message, Activity? activity)
     {
         Logger.LogWarning(message);
-        activity?.SetStatus(ActivityStatusCode.Error, message);
         throw new UnauthorizedAccessException(message);
     }
 }

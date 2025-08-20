@@ -37,8 +37,7 @@ public sealed class GetCurrentUserProfileQueryHandler(
                     About = u.About,
                     DateOfBirth = u.DateOfBirth,
                 })
-                .SingleOrDefaultAsync(ct)
-                .ConfigureAwait(false) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
+                .SingleOrDefaultAsync(ct) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
             activity?.AddEvent(new ActivityEvent("UserWasFound"));
             activity?.SetTag("user.id", result.Id);

@@ -25,8 +25,7 @@ public sealed class RegisterUserCommandHandler(
             user.About ??= string.Empty;
             user.UserName ??= user.Email;
 
-            var result = await _userManager.CreateAsync(user, request.Password)
-                .ConfigureAwait(false);
+            var result = await _userManager.CreateAsync(user, request.Password);
 
             if (!result.Succeeded)
             {

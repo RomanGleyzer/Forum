@@ -32,8 +32,8 @@ public sealed class CreatePostCommandHandler(
             post.CreationDate = DateTimeOffset.UtcNow;
             post.AuthorId = userId;
 
-            await _repository.AddAsync(post, ct).ConfigureAwait(false);
-            await _unitOfWork.SaveChangesAsync(ct).ConfigureAwait(false);
+            await _repository.AddAsync(post, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
 
             activity?.SetTag("post.id", post.Id);
 

@@ -8,7 +8,7 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
     : IRequestHandler<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private static readonly ActivitySource ActivitySource = new("Application.Queries");
+    private static readonly ActivitySource ActivitySource = new("Application.Handlers");
     protected ILogger Logger { get; } = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public abstract Task<TResponse> Handle(TRequest request, CancellationToken ct);
@@ -22,7 +22,7 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
 
         try
         {
-            var response = await action(activity, ct).ConfigureAwait(false);
+            var response = await action(activity, ct);
             LogSuccess(response, activity);
             activity?.SetStatus(ActivityStatusCode.Ok);
             return response;
@@ -31,6 +31,12 @@ public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
         {
             Logger.LogWarning("Handling {RequestType} was canceled.", typeof(TRequest).Name);
             activity?.SetStatus(ActivityStatusCode.Unset, "canceled");
+            throw;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.LogWarning(ex, "Unauthorized {RequestType}.", typeof(TRequest).Name);
+            activity?.SetStatus(ActivityStatusCode.Error, "unauthorized");
             throw;
         }
         catch (Exception ex)
