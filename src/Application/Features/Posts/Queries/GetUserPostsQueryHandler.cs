@@ -16,7 +16,11 @@ public sealed class GetUserPostsQueryHandler(
     public override Task<IReadOnlyCollection<PostPageDto>> Handle(GetUserPostsQuery request, CancellationToken ct) =>
         ExecuteAsync("GetUserPosts", ct, async (activity, ct) =>
         {
-            var posts = await _repository.GetUserPostsAsync(request.UserId, cancellationToken: ct);
+            var posts = await _repository.GetUserPostsAsync(
+                authorId: request.UserId,
+                skip: request.Skip,
+                take: request.Take,
+                cancellationToken: ct);
 
             return posts;
         });

@@ -27,6 +27,9 @@ public sealed class GetPostsByCursorQueryHandler(
 
     protected override void LogEntitySuccess(IReadOnlyList<PostPageDto> posts, Activity? activity)
     {
+        if (Logger.IsEnabled(LogLevel.Information))
+            Logger.LogInformation("Found {Count} posts for user.", posts.Count);
+
         activity?.SetTag("result.count", posts.Count);
     }
 }

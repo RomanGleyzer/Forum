@@ -11,7 +11,7 @@ namespace Infrastructure.Persistence.Repositories;
 
 public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostReadModelRepository
 {
-    private readonly SocialNetworkDbContext _dbContext = dbContext;
+    private readonly SocialNetworkDbContext _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
 
     private static readonly Expression<Func<Post, PostPageDto>> PostPageSelector = post => new PostPageDto
     {

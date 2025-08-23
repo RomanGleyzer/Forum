@@ -60,15 +60,19 @@ const renderPosts = (posts) => {
 function ensureLoadMoreButton() {
     const container = dom.$('#profile-posts');
     let btn = dom.$('#load-more-posts');
+
     if (paging.eof) { btn?.remove(); return; }
+
     if (!btn) {
         btn = dom.create('button', 'btn btn-outline-secondary w-100 mb-3');
         btn.id = 'load-more-posts';
         btn.textContent = 'Показать ещё';
         btn.addEventListener('click', loadMorePosts, { passive: true });
-        container.append(btn);
     }
+
     btn.disabled = paging.busy;
+
+    container.append(btn);
 }
 
 async function loadMorePosts() {
