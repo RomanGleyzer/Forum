@@ -6,6 +6,7 @@ using Application.Common.Options;
 using Domain.Entities;
 using Infrastructure.Auth;
 using Infrastructure.Identity;
+using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Context;
 using Infrastructure.Persistence.Repositories;
@@ -94,6 +95,16 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        services.AddOptions<MediaOptions>()
+            .Bind(config.GetSection("Media"))
+            .Validate(o =>
+                !string.IsNullOrWhiteSpace(o.RootPath) &&
+                !string.IsNullOrWhiteSpace(o.AvatarsPath) &&
+                o.MaxAvatarBytes > 0 &&
+                o.MaxAvatarSize > 0,
+                "Media options must be valid.")
+            .ValidateOnStart();
 
         services.AddOptions<JwtOptions>()
             .Bind(config.GetSection(JwtOptions.SectionName))
