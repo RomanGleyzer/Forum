@@ -43,7 +43,8 @@ public static class DependencyInjection
                         "GetPostsByCursorQueryHandler",
                         "GetUserPostsQueryHandler",
                         "RegisterUserCommandHandler",
-                        "LoginUserCommandHandler")
+                        "LoginUserCommandHandler",
+                        "UploadUserAvatarCommandHandler")
                     .AddConsoleExporter(); // только в Development
             });
 

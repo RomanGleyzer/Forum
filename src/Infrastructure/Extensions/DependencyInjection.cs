@@ -3,6 +3,7 @@ using Application.Abstractions.Auth;
 using Application.Abstractions.Identity;
 using Application.Behaviors;
 using Application.Common.Options;
+using Application.Options;
 using Domain.Entities;
 using Infrastructure.Auth;
 using Infrastructure.Identity;
@@ -11,6 +12,7 @@ using Infrastructure.Persistence;
 using Infrastructure.Persistence.Context;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Services;
+using Infrastructure.Storage;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -71,6 +73,8 @@ public static class DependencyInjection
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
+        services.AddSingleton<IAvatarStorage, LocalAvatarStorage>();
+
         var redisConnectionString = config.GetConnectionString("Redis")
             ?? throw new InvalidOperationException("Redis connection string is missing.");
 
@@ -96,14 +100,23 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        services.AddOptions<MediaOptions>()
-            .Bind(config.GetSection("Media"))
-            .Validate(o =>
-                !string.IsNullOrWhiteSpace(o.RootPath) &&
-                !string.IsNullOrWhiteSpace(o.AvatarsPath) &&
-                o.MaxAvatarBytes > 0 &&
-                o.MaxAvatarSize > 0,
-                "Media options must be valid.")
+        services.AddOptions<AvatarRulesOptions>()
+            .BindConfiguration(AvatarRulesOptions.SectionName)
+            .ValidateDataAnnotations()
+            .Validate(static o =>
+                o.AllowedMimeTypes.All(m =>
+                    m.StartsWith("image/", StringComparison.OrdinalIgnoreCase)),
+                "All AllowedMimeTypes must start with 'image/'.")
+            .ValidateOnStart();
+
+        services.AddOptions<MediaStorageOptions>()
+            .BindConfiguration(MediaStorageOptions.SectionName)
+            .ValidateDataAnnotations()
+            .Validate(static o => !Path.IsPathRooted(o.AvatarsPath),
+                "AvatarsPath must be a relative path (not rooted).")
+            .Validate(static o => string.IsNullOrWhiteSpace(o.BaseUrl) ||
+                                  Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+                "BaseUrl must be either empty or an absolute URL.")
             .ValidateOnStart();
 
         services.AddOptions<JwtOptions>()

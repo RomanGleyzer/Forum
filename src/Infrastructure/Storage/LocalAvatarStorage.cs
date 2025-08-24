@@ -1,42 +1,46 @@
 ﻿using Application.Abstractions;
 using Infrastructure.Options;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 namespace Infrastructure.Storage;
 
-public sealed class LocalAvatarStorage(IOptions<MediaOptions> options) : IAvatarStorage
+public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : IAvatarStorage
 {
-    private readonly MediaOptions _options = options.Value;
+    private readonly MediaStorageOptions _opt = options.Value;
 
-    public async Task<string> SaveAsync(string userId, Stream image, string extension, CancellationToken ct)
+    public async Task<Guid> SaveAsync(string userId, Stream image, int targetSize, CancellationToken ct)
     {
-        var avatarId = Guid.NewGuid().ToString("N");
-        var relDir = Path.Combine(_options.AvatarsPath, userId);
-        var absDir = Path.Combine(_options.RootPath, relDir);
-
+        var id = Guid.NewGuid();
+        var relDir = Path.Combine(_opt.AvatarsPath, userId);
+        var absDir = Path.Combine(_opt.RootPath, relDir);
         Directory.CreateDirectory(absDir);
 
-        var fileName = $"{avatarId}{extension}";
-        var absPath = Path.Combine(absDir, fileName);
+        using var img = await Image.LoadAsync(image, ct);
+        var size = Math.Min(targetSize, Math.Min(img.Width, img.Height));
+        img.Mutate(op => op.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(size, size) }));
 
-        await using var fs = new FileStream(absPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        await image.CopyToAsync(fs, ct);
+        var absPath = Path.Combine(absDir, $"{id:N}.webp");
+        await img.SaveAsWebpAsync(absPath, new WebpEncoder { Quality = 85 }, ct);
 
-        return avatarId;
+        return id;
     }
 
-    public Task DeleteAsync(string userId, string avatarId, CancellationToken ct)
+    public Task DeleteAsync(string userId, Guid avatarId, CancellationToken ct)
     {
-        var dir = Path.Combine(_options.RootPath, _options.AvatarsPath, userId);
+        var dir = Path.Combine(_opt.RootPath, _opt.AvatarsPath, userId);
         if (Directory.Exists(dir))
-        {
-            foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId}"))
+            foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId:N}.*"))
                 File.Delete(file);
-        }
-
         return Task.CompletedTask;
     }
 
-    public string BuildPublicUrl(string userId, string avatarId, int version)
-        => $"{_options.BaseUrl.TrimEnd('/')}/{_options.AvatarsPath.Trim('/')}/{userId}/{avatarId}.jpg?v={version}";
+    public string BuildPublicUrl(string userId, Guid avatarId, int version)
+    {
+        var baseUrl = _opt.BaseUrl?.TrimEnd('/') ?? string.Empty;
+        var rel = $"{_opt.AvatarsPath.Trim('/')}/{userId}/{avatarId:N}.webp?v={version}";
+        return string.IsNullOrEmpty(baseUrl) ? $"/{rel}" : $"{baseUrl}/{rel}";
+    }
 }

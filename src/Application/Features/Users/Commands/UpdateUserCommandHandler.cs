@@ -29,56 +29,56 @@ public class UpdateUserCommandHandler(
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
     public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken ct) =>
-    ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
-    {
-        var userId = _currentUser.UserId;
-        activity?.SetTag("enduser.id", userId);
-
-        var user = await _userManager.FindByIdAsync(userId)
-                     ?? throw new UnauthorizedAccessException("User not found.");
-
-        var (anyChanged, nameChanged, emailChanged) = ApplyChanges(user, request);
-
-        if (!anyChanged)
+        ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
         {
-            activity?.AddEvent(new ActivityEvent("NoOpUpdate"));
+            var userId = _currentUser.UserId;
+            activity?.SetTag("enduser.id", userId);
+
+            var user = await _userManager.FindByIdAsync(userId)
+                         ?? throw new UnauthorizedAccessException("User not found.");
+
+            var (anyChanged, nameChanged, emailChanged) = ApplyChanges(user, request);
+
+            if (!anyChanged)
+            {
+                activity?.AddEvent(new ActivityEvent("NoOpUpdate"));
+                return _mapper.Map<ApplicationUserDto>(user);
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var failures = result.Errors
+                    .Select(e => new ValidationFailure(e.Code, e.Description))
+                    .ToArray();
+
+                activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
+                activity?.SetTag("validation.errors.count", failures.Length);
+                throw new ValidationException(failures);
+            }
+
+            if (nameChanged)
+            {
+                await _cache.SetAsync(
+                    $"{MinKeyPrefix}:{userId}",
+                    new CurrentUserDto
+                    {
+                        FirstName = user.FirstName ?? string.Empty,
+                        LastName = user.LastName ?? string.Empty
+                    },
+                    MinTtl,
+                    ct);
+
+                activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
+            }
+
+            if (emailChanged)
+                activity?.AddEvent(new ActivityEvent("UserNameEmailUpdated"));
+
+            activity?.AddEvent(new ActivityEvent("UserUpdated"));
             return _mapper.Map<ApplicationUserDto>(user);
-        }
-
-        var result = await _userManager.UpdateAsync(user);
-
-        if (!result.Succeeded)
-        {
-            var failures = result.Errors
-                .Select(e => new ValidationFailure(e.Code, e.Description))
-                .ToArray();
-
-            activity?.SetStatus(ActivityStatusCode.Error, "Validation failed");
-            activity?.SetTag("validation.errors.count", failures.Length);
-            throw new ValidationException(failures);
-        }
-
-        if (nameChanged)
-        {
-            await _cache.SetAsync(
-                $"{MinKeyPrefix}:{userId}",
-                new CurrentUserDto
-                {
-                    FirstName = user.FirstName ?? string.Empty,
-                    LastName = user.LastName ?? string.Empty
-                },
-                MinTtl,
-                ct);
-
-            activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
-        }
-
-        if (emailChanged)
-            activity?.AddEvent(new ActivityEvent("UserNameEmailUpdated"));
-
-        activity?.AddEvent(new ActivityEvent("UserUpdated"));
-        return _mapper.Map<ApplicationUserDto>(user);
-    });
+        });
 
 
     private static string? NormalizeOrNull(string? s)
