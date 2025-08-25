@@ -15,7 +15,7 @@ public class UploadUserAvatarCommandHandler(
     ILogger<UploadUserAvatarCommandHandler> logger,
     UserManager<ApplicationUser> userManager,
     IAvatarStorage storage,
-    IOptions<AvatarRulesOptions> rules) : QueryHandlerBase<UploadUserAvatarCommand, string>(logger)
+    IOptions<AvatarRulesOptions> rules) : RequestHandlerBase<UploadUserAvatarCommand, string>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));

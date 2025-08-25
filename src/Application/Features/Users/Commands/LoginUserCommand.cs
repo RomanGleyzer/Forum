@@ -2,4 +2,4 @@
 
 namespace Application.Features.Users.Commands;
 
-public record LoginUserCommand(string Login, string Password) : IRequest<string>;
+public record LoginUserCommand(string Email, string Password) : IRequest<AuthTokenResponse>;

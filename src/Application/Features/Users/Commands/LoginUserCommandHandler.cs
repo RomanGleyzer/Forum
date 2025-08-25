@@ -1,6 +1,7 @@
 ﻿using Application.Abstractions.Auth;
 using Application.Common.Handlers;
 using Domain.Entities;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -11,58 +12,47 @@ namespace Application.Features.Users.Commands;
 
 public sealed class LoginUserCommandHandler(
     UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
     ILogger<LoginUserCommandHandler> logger,
     IJwtTokenFactory jwtTokenFactory)
-    : QueryHandlerBase<LoginUserCommand, string>(logger)
+    : RequestHandlerBase<LoginUserCommand, AuthTokenResponse>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly IJwtTokenFactory _jwtFactory = jwtTokenFactory ?? throw new ArgumentNullException(nameof(jwtTokenFactory));
-
-    public override Task<string> Handle(LoginUserCommand request, CancellationToken ct) =>
+    public override Task<AuthTokenResponse> Handle(LoginUserCommand request, CancellationToken ct) =>
         ExecuteAsync("LoginUser", ct, async (activity, ct) =>
         {
-            ApplicationUser? user = null;
+            var email = request.Email?.Trim();
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ValidationException("Email is required.");
 
-            if (!string.IsNullOrWhiteSpace(request.Login))
-                user = await _userManager.FindByEmailAsync(request.Login);
-
+            var user = await userManager.FindByEmailAsync(email);
             if (user is null)
-                ThrowUnauthorized("Invalid username or password.", activity);
+                return FailUnauthorized(activity);
 
-            if (_userManager.SupportsUserLockout && await _userManager.IsLockedOutAsync(user!))
-                ThrowUnauthorized("Invalid username or password.", activity);
-
-            var passwordOk = await _userManager.CheckPasswordAsync(user!, request.Password);
-            if (!passwordOk)
-            {
-                if (_userManager.SupportsUserLockout)
-                    await _userManager.AccessFailedAsync(user!);
-
-                ThrowUnauthorized("Invalid username or password.", activity);
-            }
-
-            if (_userManager.SupportsUserLockout)
-                await _userManager.ResetAccessFailedCountAsync(user!);
+            var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            if (!result.Succeeded)
+                return FailUnauthorized(activity);
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user!.Id),
-                new Claim(ClaimTypes.NameIdentifier, user!.Id),
-                new Claim(ClaimTypes.Email, user!.Email ?? string.Empty)
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
             };
 
-            var token = _jwtFactory.CreateToken(claims);
+            var token = jwtTokenFactory.CreateToken(claims);
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
             activity?.AddEvent(new ActivityEvent("UserAuthenticated"));
-            activity?.SetTag("user.id", user!.Id);
+            activity?.SetTag("user.id", user.Id);
 
-            return tokenString;
+            return new AuthTokenResponse(tokenString, "Bearer", (int)TimeSpan.FromHours(1).TotalSeconds);
         });
 
-    private void ThrowUnauthorized(string message, Activity? activity)
+    private static AuthTokenResponse FailUnauthorized(Activity? activity)
     {
-        Logger.LogWarning(message);
-        throw new UnauthorizedAccessException(message);
+        activity?.SetStatus(ActivityStatusCode.Error, "Unauthorized");
+        throw new UnauthorizedAccessException("Invalid username or password.");
     }
 }
+
+public sealed record AuthTokenResponse(string AccessToken, string TokenType, int ExpiresIn);

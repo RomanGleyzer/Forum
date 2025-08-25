@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace Application.Common.Handlers;
 
-public abstract class QueryHandlerBase<TRequest, TResponse>(ILogger logger)
+public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
     : IRequestHandler<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {

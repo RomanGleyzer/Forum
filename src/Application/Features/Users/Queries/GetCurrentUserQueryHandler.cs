@@ -15,7 +15,7 @@ public sealed class GetCurrentUserQueryHandler(
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager,
     ICacheService cache)
-    : QueryHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
+    : RequestHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
 {
     private const string CachePrefix = "user:min";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);

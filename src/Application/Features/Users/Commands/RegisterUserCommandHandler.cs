@@ -13,7 +13,7 @@ public sealed class RegisterUserCommandHandler(
     UserManager<ApplicationUser> userManager,
     ILogger<RegisterUserCommandHandler> logger,
     IMapper mapper)
-    : QueryHandlerBase<RegisterUserCommand, string>(logger)
+    : RequestHandlerBase<RegisterUserCommand, string>(logger)
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));

@@ -13,7 +13,7 @@ public sealed class CreatePostCommandHandler(
     IMapper mapper,
     IPostRepository repository,
     IUnitOfWork unitOfWork)
-    : QueryHandlerBase<CreatePostCommand, Guid>(logger)
+    : RequestHandlerBase<CreatePostCommand, Guid>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));

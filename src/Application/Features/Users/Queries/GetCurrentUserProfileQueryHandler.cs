@@ -13,7 +13,7 @@ public sealed class GetCurrentUserProfileQueryHandler(
     ILogger<GetCurrentUserProfileQueryHandler> logger,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager)
-    : QueryHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
+    : RequestHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));

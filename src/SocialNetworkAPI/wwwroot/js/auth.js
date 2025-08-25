@@ -11,19 +11,32 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         disableForm(loginForm, true);
+
         const email = dom.$('#login-email')?.value.trim();
         const password = dom.$('#login-password')?.value;
 
-        const { ok, json, resp } = await http.post('/api/auth/login', { login: email, password });
+        const { ok, json } = await http.post('/api/auth/login', { email, password });
+
         if (ok) {
-            const token = typeof json === 'string' ? json : (json?.token ?? await resp.text());
+            const token =
+                json?.accessToken ??
+                json?.token ??
+                (typeof json === 'string' ? json : null);
+
+            if (!token) {
+                ui.toast('Не удалось получить токен');
+                disableForm(loginForm, false);
+                return;
+            }
+
             storage.setToken(token);
             location.href = 'index.html';
         } else {
-            ui.toast(json?.message || 'Ошибка входа');
+            ui.toast(json?.title || json?.message || 'Ошибка входа');
+            disableForm(loginForm, false);
         }
-        disableForm(loginForm, false);
     });
+
 
     registerForm?.addEventListener('submit', async (e) => {
         e.preventDefault();

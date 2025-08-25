@@ -18,7 +18,7 @@ public class UpdateUserCommandHandler(
     IMapper mapper,
     UserManager<ApplicationUser> userManager,
     ICacheService cache)
-    : QueryHandlerBase<UpdateUserCommand, ApplicationUserDto>(logger)
+    : RequestHandlerBase<UpdateUserCommand, ApplicationUserDto>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));

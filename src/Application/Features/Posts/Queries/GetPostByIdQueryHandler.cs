@@ -10,7 +10,7 @@ namespace Application.Features.Posts.Queries;
 public sealed class GetPostByIdQueryHandler(
     IPostReadModelRepository repository,
     ILogger<GetPostByIdQueryHandler> logger)
-    : QueryHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
+    : RequestHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
 

@@ -2,10 +2,16 @@
 
 namespace Application.Features.Users.Commands;
 
-public class LoginUserCommandValidator : AbstractValidator<LoginUserCommand>
+public sealed class LoginUserCommandValidator : AbstractValidator<LoginUserCommand>
 {
     public LoginUserCommandValidator()
     {
-        RuleFor(x => x.Login).EmailAddress().NotEmpty();
+        RuleFor(x => x.Email)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty()
+            .EmailAddress();
+
+        RuleFor(x => x.Password)
+            .NotEmpty();
     }
 }

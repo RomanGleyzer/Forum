@@ -18,7 +18,7 @@ public static class DependencyInjection
 
         var appAssembly = typeof(CreatePostCommand).Assembly;
 
-        services.AddAutoMapper(appAssembly);
+        services.AddAutoMapper(cfg => { }, appAssembly);
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(appAssembly));
         services.AddValidatorsFromAssembly(appAssembly);
 

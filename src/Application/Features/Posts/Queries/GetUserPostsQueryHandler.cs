@@ -9,7 +9,7 @@ namespace Application.Features.Posts.Queries;
 public sealed class GetUserPostsQueryHandler(
     IPostReadModelRepository repository,
     ILogger<GetUserPostsQueryHandler> logger)
-    : QueryHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
+    : RequestHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
 
