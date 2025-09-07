@@ -2,7 +2,7 @@
 
 namespace Domain.Entities;
 
-public class Post : IDbEntity<Guid>
+public class Post : IEntity<Guid>
 {
     public Guid Id { get; set; }
 

@@ -1,6 +1,6 @@
 ﻿namespace Domain.Interfaces;
 
-public interface IDbEntity<TId>
+public interface IEntity<TId>
 {
     TId Id { get; set; }
 }

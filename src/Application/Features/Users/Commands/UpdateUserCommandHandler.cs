@@ -13,6 +13,7 @@ using System.Diagnostics;
 namespace Application.Features.Users.Commands;
 
 public class UpdateUserCommandHandler(
+    ICurrentUserCacheFactory currentUserCacheFactory,
     ICurrentUserService currentUser,
     ILogger<UpdateUserCommandHandler> logger,
     IMapper mapper,
@@ -20,6 +21,7 @@ public class UpdateUserCommandHandler(
     ICacheService cache)
     : RequestHandlerBase<UpdateUserCommand, ApplicationUserDto>(logger)
 {
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
@@ -60,15 +62,8 @@ public class UpdateUserCommandHandler(
 
             if (nameChanged)
             {
-                await _cache.SetAsync(
-                    $"{MinKeyPrefix}:{userId}",
-                    new CurrentUserDto
-                    {
-                        FirstName = user.FirstName ?? string.Empty,
-                        LastName = user.LastName ?? string.Empty
-                    },
-                    MinTtl,
-                    ct);
+                var dto = _cacheFactory.Create(user);
+                await _cache.SetAsync($"{MinKeyPrefix}:{userId}", dto, MinTtl, ct);
 
                 activity?.AddEvent(new ActivityEvent("CacheSet:user:min"));
             }

@@ -11,16 +11,23 @@ using System.Diagnostics;
 namespace Application.Features.Users.Commands;
 
 public class UploadUserAvatarCommandHandler(
+    ICurrentUserCacheFactory currentUserCacheFactory,
     ICurrentUserService currentUser,
+    ICacheService cacheService,
     ILogger<UploadUserAvatarCommandHandler> logger,
     UserManager<ApplicationUser> userManager,
     IAvatarStorage storage,
     IOptions<AvatarRulesOptions> rules) : RequestHandlerBase<UploadUserAvatarCommand, string>(logger)
 {
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
+    private readonly ICacheService _cache = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly IAvatarStorage _storage = storage ?? throw new ArgumentNullException(nameof(currentUser));
-    private readonly IOptions<AvatarRulesOptions> _rules = rules ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly IAvatarStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+    private readonly IOptions<AvatarRulesOptions> _rules = rules ?? throw new ArgumentNullException(nameof(rules));
+
+    private const string MinKeyPrefix = "user:min";
+    private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
     public override Task<string> Handle(UploadUserAvatarCommand request, CancellationToken ct) =>
         ExecuteAsync("Users.UploadAvatar", ct, async (activity, ct) =>
@@ -55,16 +62,19 @@ public class UploadUserAvatarCommandHandler(
             activity?.SetTag("avatar.new_id", newId.ToString("N"));
 
             if (user.AvatarId.HasValue)
-                await storage.DeleteAsync(userId, user.AvatarId.Value, ct);
+                await _storage.DeleteAsync(userId, user.AvatarId.Value, ct);
 
             user.AvatarId = newId;
             user.AvatarVersion++;
             await _userManager.UpdateAsync(user);
 
+            var dto = _cacheFactory.Create(user);
+            await _cache.SetAsync($"{MinKeyPrefix}:{userId}", dto, MinTtl, ct);
+
             activity?.SetTag("avatar.version", user.AvatarVersion);
             activity?.AddEvent(new ActivityEvent("UserAvatarUpdated"));
 
-            return storage.BuildPublicUrl(userId, newId, user.AvatarVersion);
+            return _storage.BuildPublicUrl(userId, newId, user.AvatarVersion);
         });
 
     protected override void LogEntitySuccess(string response, Activity? activity)

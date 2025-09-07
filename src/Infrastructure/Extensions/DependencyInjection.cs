@@ -11,6 +11,7 @@ using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Context;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Providers;
 using Infrastructure.Services;
 using Infrastructure.Storage;
 using MediatR;
@@ -74,6 +75,8 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         services.AddSingleton<IAvatarStorage, LocalAvatarStorage>();
+        services.AddSingleton<IUserAvatarUrlProvider, UserAvatarUrlProvider>();
+        services.AddSingleton<ICurrentUserCacheFactory, CurrentUserCacheFactory>();
 
         var redisConnectionString = config.GetConnectionString("Redis")
             ?? throw new InvalidOperationException("Redis connection string is missing.");

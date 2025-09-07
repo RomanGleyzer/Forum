@@ -2,7 +2,7 @@
 
 namespace Domain.Entities;
 
-public class Comment : IDbEntity<Guid>
+public class Comment : IEntity<Guid>
 {
     public Guid Id { get; set; }
 

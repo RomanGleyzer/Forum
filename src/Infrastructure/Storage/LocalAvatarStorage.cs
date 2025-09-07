@@ -37,7 +37,7 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
         return Task.CompletedTask;
     }
 
-    public string BuildPublicUrl(string userId, Guid avatarId, int version)
+    public string BuildPublicUrl(string userId, Guid? avatarId, int version)
     {
         var baseUrl = _opt.BaseUrl?.TrimEnd('/') ?? string.Empty;
         var rel = $"{_opt.AvatarsPath.Trim('/')}/{userId}/{avatarId:N}.webp?v={version}";

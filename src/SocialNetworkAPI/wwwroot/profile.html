@@ -55,7 +55,20 @@
                         <div class="card rounded-4 shadow-lg border-0 mb-4 text-center">
                             <div class="profile-cover"></div>
                             <div class="card-body pt-0">
-                                <img id="profile-avatar" src="images/user-default.png" alt="User avatar" class="profile-avatar rounded-circle mb-2">
+
+                                <div class="position-relative d-inline-block">
+                                    <img id="profile-avatar" src="images/user-default.png" alt="User avatar"
+                                         class="profile-avatar rounded-circle mb-2">
+
+                                    <input type="file" id="avatar-upload" accept="image/*" class="d-none">
+
+                                    <button type="button" id="change-avatar-btn"
+                                            class="btn btn-sm btn-light border position-absolute bottom-0 end-0 rounded-circle"
+                                            style="transform: translate(30%, -30%);">
+                                        <i class="bi bi-camera"></i>
+                                    </button>
+                                </div>
+
                                 <h4 id="profile-fullname" class="fw-bold mt-2 mb-1"></h4>
                                 <div id="profile-email" class="text-muted mb-2"></div>
                                 <div id="profile-birthdate" class="text-muted mb-2"></div>

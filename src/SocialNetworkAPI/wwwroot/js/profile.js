@@ -3,6 +3,83 @@
 let currentUserProfile = null;
 let paging = { skip: 0, take: 10, busy: false, eof: false };
 
+const AVATAR = {
+    maxBytes: 2 * 1024 * 1024,
+    types: new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']),
+};
+
+const $avatarImg = () => dom.$('#profile-avatar');
+const $avatarUpload = () => dom.$('#avatar-upload');
+const $avatarChangeBtn = () => dom.$('#change-avatar-btn');
+
+let uploadBusy = false;
+let previewUrlToRevoke = null;
+
+const validateFile = (file) => {
+    if (!file) { ui.toast('Файл не выбран'); return false; }
+    if (!AVATAR.types.has(file.type)) { ui.toast('Допустимы JPG, PNG, WEBP, AVIF'); return false; }
+    if (file.size > AVATAR.maxBytes) { ui.toast('Файл слишком большой (макс. 2 МБ)'); return false; }
+    return true;
+};
+
+const withBust = (url) => url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+const previewLocally = (file) => {
+    if (previewUrlToRevoke) {
+        URL.revokeObjectURL(previewUrlToRevoke);
+        previewUrlToRevoke = null;
+    }
+    const url = URL.createObjectURL(file);
+    $avatarImg().src = url;
+    previewUrlToRevoke = url;
+};
+
+const uploadAvatar = async (file) => {
+    if (uploadBusy) return;
+    if (!validateFile(file)) return;
+
+    const oldSrc = $avatarImg().src;
+    previewLocally(file);
+
+    uploadBusy = true;
+    const ctrl = new AbortController();
+
+    try {
+        const form = new FormData();
+        form.append('file', file, file.name || 'avatar');
+
+        const { ok, json } = await http.upload('/api/users/me/avatar', form, { signal: ctrl.signal });
+
+        if (!ok) throw new Error(json?.message || 'Ошибка загрузки аватара');
+
+        const newUrl = json?.url ? withBust(json.url) : null;
+        if (newUrl) $avatarImg().src = newUrl;
+
+        ui.toast('Аватар обновлён!', 'success');
+    } catch (err) {
+        $avatarImg().src = oldSrc;
+        ui.toast(err.message || 'Не удалось обновить аватар');
+    } finally {
+        uploadBusy = false;
+        if (previewUrlToRevoke) {
+            URL.revokeObjectURL(previewUrlToRevoke);
+            previewUrlToRevoke = null;
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // клик по кнопке с камерой
+    $avatarChangeBtn()?.addEventListener('click', () => $avatarUpload()?.click(), { passive: true });
+
+    // выбор файла
+    $avatarUpload()?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) uploadAvatar(file);
+        e.target.value = '';
+    });
+});
+
 const getCurrentUser = async () => {
     if (currentUserProfile) return currentUserProfile;
     const { ok, json } = await http.get('/api/users/me/profile');
@@ -71,7 +148,6 @@ function ensureLoadMoreButton() {
     }
 
     btn.disabled = paging.busy;
-
     container.append(btn);
 }
 

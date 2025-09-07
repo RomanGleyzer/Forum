@@ -14,7 +14,8 @@ public sealed class GetCurrentUserQueryHandler(
     ILogger<GetCurrentUserQueryHandler> logger,
     ICurrentUserService currentUser,
     UserManager<ApplicationUser> userManager,
-    ICacheService cache)
+    ICacheService cache,
+    IUserAvatarUrlProvider avatarUrlProvider)
     : RequestHandlerBase<GetCurrentUserQuery, CurrentUserDto>(logger)
 {
     private const string CachePrefix = "user:min";
@@ -23,13 +24,12 @@ public sealed class GetCurrentUserQueryHandler(
     private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
     private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     private readonly ICacheService _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
 
     public override Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken ct) =>
         ExecuteAsync("GetCurrentUser", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
-            if (string.IsNullOrWhiteSpace(userId))
-                throw new UnauthorizedAccessException("User is not authenticated.");
 
             var cacheKey = $"{CachePrefix}:{userId}";
 
@@ -48,7 +48,8 @@ public sealed class GetCurrentUserQueryHandler(
                 .Select(u => new CurrentUserDto
                 {
                     FirstName = u.FirstName,
-                    LastName = u.LastName
+                    LastName = u.LastName,
+                    AvatarUrl = _avatarUrlProvider.BuildUserAvatarUrl(u.Id, u.AvatarId, u.AvatarVersion)
                 })
                 .SingleOrDefaultAsync(ct) ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 

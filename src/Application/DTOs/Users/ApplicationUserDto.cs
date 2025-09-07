@@ -13,4 +13,6 @@ public class ApplicationUserDto
     public string About { get; init; } = null!;
 
     public DateOnly DateOfBirth { get; init; }
+
+    public string? AvatarUrl { get; init; }
 }

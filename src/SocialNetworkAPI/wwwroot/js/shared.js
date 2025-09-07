@@ -67,6 +67,13 @@ export const http = {
             body: JSON.stringify(body),
             ...opts,
         }, opts),
+    upload: (url, formData, opts = {}) =>
+        request(url, {
+            method: 'POST',
+            headers: buildHeaders(),
+            body: formData,
+            ...opts,
+        }, opts),
 };
 
 export const dom = {
