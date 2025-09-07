@@ -7,12 +7,15 @@ const toFullName = (u) => `${u?.lastName ?? ''} ${u?.firstName ?? ''}`.trim();
 document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = dom.$('#sidebar-username');
     const avatarEl = dom.$('#sidebar-avatar');
+    const composerAvatarEl = dom.$('#composer-avatar');
+
     if (!nameEl || !avatarEl) return;
 
     const { ok, json } = await http.get('/api/users/me');
     if (!ok || !json) {
         nameEl.textContent = 'Без имени';
         avatarEl.src = AVATAR_FALLBACK;
+        if (composerAvatarEl) composerAvatarEl.src = AVATAR_FALLBACK;
         return;
     }
 
@@ -22,8 +25,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (json.avatarUrl) {
         avatarEl.src = json.avatarUrl;
+        if (composerAvatarEl) composerAvatarEl.src = json.avatarUrl;
+    } else {
+        avatarEl.src = AVATAR_FALLBACK;
+        if (composerAvatarEl) composerAvatarEl.src = AVATAR_FALLBACK;
     }
+
     avatarEl.alt = `Аватар: ${fullName}`;
+    if (composerAvatarEl) composerAvatarEl.alt = `Аватар: ${fullName}`;
 
     avatarEl.addEventListener('error', () => { avatarEl.src = AVATAR_FALLBACK; });
+    composerAvatarEl?.addEventListener('error', () => { composerAvatarEl.src = AVATAR_FALLBACK; });
 });

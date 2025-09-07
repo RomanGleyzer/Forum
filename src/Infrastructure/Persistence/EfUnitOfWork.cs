@@ -3,7 +3,7 @@ using Infrastructure.Persistence.Context;
 
 namespace Infrastructure.Persistence;
 
-public class EfUnitOfWork(SocialNetworkDbContext dbContext) : IUnitOfWork
+public sealed class EfUnitOfWork(SocialNetworkDbContext dbContext) : IUnitOfWork
 {
     private readonly SocialNetworkDbContext _dbContext = dbContext;
 

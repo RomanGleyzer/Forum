@@ -1,6 +1,4 @@
 ﻿using Application.DTOs.Posts;
-using Application.Features.Posts.Queries;
-using Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

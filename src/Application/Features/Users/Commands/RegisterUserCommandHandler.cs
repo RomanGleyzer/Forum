@@ -15,8 +15,11 @@ public sealed class RegisterUserCommandHandler(
     IMapper mapper)
     : RequestHandlerBase<RegisterUserCommand, string>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+        ?? throw new ArgumentNullException(nameof(userManager));
+
+    private readonly IMapper _mapper = mapper
+        ?? throw new ArgumentNullException(nameof(mapper));
 
     public override Task<string> Handle(RegisterUserCommand request, CancellationToken ct) =>
         ExecuteAsync("RegisterUser", ct, async (activity, ct) =>

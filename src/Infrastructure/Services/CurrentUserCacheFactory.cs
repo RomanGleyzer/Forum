@@ -4,7 +4,7 @@ using Domain.Entities;
 
 namespace Infrastructure.Services;
 
-public class CurrentUserCacheFactory(IUserAvatarUrlProvider avatarUrlProvider) : ICurrentUserCacheFactory
+public sealed class CurrentUserCacheFactory(IUserAvatarUrlProvider avatarUrlProvider) : ICurrentUserCacheFactory
 {
     private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
 

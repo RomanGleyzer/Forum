@@ -25,7 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
-using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 namespace Infrastructure.Extensions;
@@ -166,7 +166,7 @@ public static class DependencyInjection
                     ValidTypes = ["JWT"],
 
                     RoleClaimType = "role",
-                    NameClaimType = JwtRegisteredClaimNames.Sub
+                    NameClaimType = ClaimTypes.NameIdentifier
                 };
 
                 options.Events = new JwtBearerEvents

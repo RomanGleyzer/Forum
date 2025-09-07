@@ -12,7 +12,8 @@ public sealed class GetPostByIdQueryHandler(
     ILogger<GetPostByIdQueryHandler> logger)
     : RequestHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
 {
-    private readonly IPostReadModelRepository _repository = repository ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IPostReadModelRepository _repository = repository
+        ?? throw new ArgumentNullException(nameof(repository));
 
     public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct) =>
         ExecuteAsync("GetPostById", ct, async (activity, ct) =>

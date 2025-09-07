@@ -1,5 +1,4 @@
-﻿using Application.DTOs.Posts;
-using MediatR;
+﻿using MediatR;
 
 namespace Application.Features.Posts.Commands;
 

@@ -1,10 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Application.DTOs.Posts;
+﻿using Application.DTOs.Posts;
 using Application.Features.Posts.Commands;
 using Application.Features.Posts.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace SocialNetworkAPI.Controllers;
 

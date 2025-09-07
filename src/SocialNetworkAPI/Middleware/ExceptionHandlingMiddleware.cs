@@ -1,47 +1,56 @@
-﻿using System.Text.Json;
+﻿using Application.Exceptions;
+using FluentValidation;
+using System.Net;
+using System.Text.Json;
 
 namespace SocialNetworkAPI.Middleware;
 
 public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
-    private readonly RequestDelegate _next = next;
-    private readonly ILogger<ExceptionHandlingMiddleware> _logger = logger;
-    
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception has occurred");
-            await HandleExceptionAsync(context, ex);
+            await WriteProblemAsync(context, ex);
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task WriteProblemAsync(HttpContext ctx, Exception ex)
     {
-        var status = exception is InvalidOperationException
-            ? StatusCodes.Status400BadRequest
-            : StatusCodes.Status500InternalServerError;
+        var (status, title) = Map(ex);
 
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = status;
-
-        var message = status == StatusCodes.Status500InternalServerError
-            ? "An unexpected error occurred."
-            : exception.Message;
-
-        var payload = new
+        var problem = new
         {
+            type = "about:blank",
+            title,
             status,
-            message,
-            traceId = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier
+            traceId = System.Diagnostics.Activity.Current?.Id ?? ctx.TraceIdentifier
         };
 
-        return context.Response.WriteAsJsonAsync(payload, JsonOptions, context.RequestAborted);
+        ctx.Response.Clear();
+        ctx.Response.ContentType = "application/problem+json";
+        ctx.Response.StatusCode = status;
+        await ctx.Response.WriteAsJsonAsync(problem, Json, ctx.RequestAborted);
+    }
+
+    private static (int Status, string Title) Map(Exception ex)
+    {
+        return ex switch
+        {
+            UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, "Unauthorized"),
+            ValidationException => ((int)HttpStatusCode.BadRequest, "Validation failed"),
+
+            var _ when ex.GetType().IsGenericType
+                        && ex.GetType().GetGenericTypeDefinition() == typeof(NotFoundException<>)
+                => ((int)HttpStatusCode.NotFound, "Not Found"),
+
+            _ => ((int)HttpStatusCode.InternalServerError, "Unexpected error")
+        };
     }
 }

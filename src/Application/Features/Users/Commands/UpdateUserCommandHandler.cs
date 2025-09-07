@@ -21,11 +21,20 @@ public class UpdateUserCommandHandler(
     ICacheService cache)
     : RequestHandlerBase<UpdateUserCommand, ApplicationUserDto>(logger)
 {
-    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
-    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
-    private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly ICacheService _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
+        ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
+
+    private readonly ICurrentUserService _currentUser = currentUser
+        ?? throw new ArgumentNullException(nameof(currentUser));
+
+    private readonly IMapper _mapper = mapper
+        ?? throw new ArgumentNullException(nameof(mapper));
+
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+        ?? throw new ArgumentNullException(nameof(userManager));
+
+    private readonly ICacheService _cache = cache
+        ?? throw new ArgumentNullException(nameof(cache));
 
     private const string MinKeyPrefix = "user:min";
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);

@@ -10,21 +10,37 @@ using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
-public class UploadUserAvatarCommandHandler(
+public sealed class UploadUserAvatarCommandHandler(
     ICurrentUserCacheFactory currentUserCacheFactory,
     ICurrentUserService currentUser,
     ICacheService cacheService,
     ILogger<UploadUserAvatarCommandHandler> logger,
     UserManager<ApplicationUser> userManager,
     IAvatarStorage storage,
-    IOptions<AvatarRulesOptions> rules) : RequestHandlerBase<UploadUserAvatarCommand, string>(logger)
+    IOptions<AvatarRulesOptions> rules,
+    IUserAvatarUrlProvider avatarUrlProvider)
+    : RequestHandlerBase<UploadUserAvatarCommand, string>(logger)
 {
-    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
-    private readonly ICacheService _cache = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
-    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly IAvatarStorage _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-    private readonly IOptions<AvatarRulesOptions> _rules = rules ?? throw new ArgumentNullException(nameof(rules));
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
+        ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
+
+    private readonly ICacheService _cache = cacheService
+        ?? throw new ArgumentNullException(nameof(cacheService));
+
+    private readonly ICurrentUserService _currentUser = currentUser
+        ?? throw new ArgumentNullException(nameof(currentUser));
+
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+        ?? throw new ArgumentNullException(nameof(userManager));
+
+    private readonly IAvatarStorage _storage = storage
+        ?? throw new ArgumentNullException(nameof(storage));
+
+    private readonly IOptions<AvatarRulesOptions> _rules = rules
+        ?? throw new ArgumentNullException(nameof(rules));
+
+    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider
+        ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
 
     private const string MinKeyPrefix = "user:min";
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
@@ -33,32 +49,35 @@ public class UploadUserAvatarCommandHandler(
         ExecuteAsync("Users.UploadAvatar", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
-            activity?.SetTag("enduser.id", _currentUser.UserId);
+            activity?.SetTag("enduser.id", userId);
 
-            var f = request.File ?? throw new ArgumentException("File is required.");
-            activity?.SetTag("app.file.name", f.FileName);
-            activity?.SetTag("app.file.length", f.Length);
-            activity?.SetTag("app.file.content_type", f.ContentType);
+            var file = request.File ?? throw new ArgumentException("File is required.");
+            activity?.SetTag("app.file.name", file.FileName);
+            activity?.SetTag("app.file.length", file.Length);
+            activity?.SetTag("app.file.content_type", file.ContentType);
 
-            if (f.Length == 0)
+            if (file.Length == 0)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, "empty_file");
                 throw new ArgumentException("File is empty.");
             }
 
-            if (f.Length > _rules.Value.MaxBytes)
+            if (file.Length > _rules.Value.MaxBytes)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, "file_too_large");
                 throw new ArgumentException("File too large.");
             }
 
-            try { var _ = await SixLabors.ImageSharp.Image.IdentifyAsync(f.Content, ct); }
-            catch { throw new ArgumentException("Invalid image file."); }
-            f.Content.Position = 0;
+            if (!_rules.Value.AllowedMimeTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, "unsupported_type");
+                throw new ArgumentException("Unsupported content type.");
+            }
 
-            var user = await _userManager.FindByIdAsync(userId) ?? throw new InvalidOperationException("User not found.");
+            var user = await _userManager.FindByIdAsync(userId)
+                       ?? throw new InvalidOperationException("User not found.");
 
-            var newId = await _storage.SaveAsync(userId, f.Content, _rules.Value.TargetSize, ct);
+            var newId = await _storage.SaveAsync(userId, file.Content, _rules.Value.TargetSize, ct);
             activity?.SetTag("avatar.new_id", newId.ToString("N"));
 
             if (user.AvatarId.HasValue)
@@ -74,7 +93,7 @@ public class UploadUserAvatarCommandHandler(
             activity?.SetTag("avatar.version", user.AvatarVersion);
             activity?.AddEvent(new ActivityEvent("UserAvatarUpdated"));
 
-            return _storage.BuildPublicUrl(userId, newId, user.AvatarVersion);
+            return _avatarUrlProvider.BuildUserAvatarUrl(userId, newId, user.AvatarVersion)!;
         });
 
     protected override void LogEntitySuccess(string response, Activity? activity)

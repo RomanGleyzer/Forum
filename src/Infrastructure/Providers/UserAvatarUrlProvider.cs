@@ -2,7 +2,7 @@
 
 namespace Infrastructure.Providers;
 
-public class UserAvatarUrlProvider : IUserAvatarUrlProvider
+public sealed class UserAvatarUrlProvider : IUserAvatarUrlProvider
 {
     public string? BuildUserAvatarUrl(string userId, Guid? avatarId, int avatarVersion)
     {

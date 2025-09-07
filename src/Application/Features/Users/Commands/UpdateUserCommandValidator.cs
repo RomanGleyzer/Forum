@@ -1,5 +1,4 @@
-﻿using Application.Features.Posts.Queries;
-using FluentValidation;
+﻿using FluentValidation;
 
 namespace Application.Features.Users.Commands;
 

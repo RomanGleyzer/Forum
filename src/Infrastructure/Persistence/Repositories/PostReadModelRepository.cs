@@ -11,7 +11,8 @@ namespace Infrastructure.Persistence.Repositories;
 
 public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostReadModelRepository
 {
-    private readonly SocialNetworkDbContext _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    private readonly SocialNetworkDbContext _dbContext = dbContext
+        ?? throw new ArgumentNullException(nameof(dbContext));
 
     private static readonly Expression<Func<Post, PostPageDto>> PostPageSelector = post => new PostPageDto
     {
@@ -22,7 +23,10 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
         {
             Id = post.Author.Id,
             FirstName = post.Author.FirstName ?? string.Empty,
-            LastName = post.Author.LastName ?? string.Empty
+            LastName = post.Author.LastName ?? string.Empty,
+            AvatarUrl = post.Author.AvatarId != null
+                ? $"/api/files/avatars/{post.Author.Id}/{post.Author.AvatarId}?v={post.Author.AvatarVersion}"
+                : null
         },
         FeaturedComment = post.Comments
             .OrderByDescending(c => c.CreationDate)
@@ -36,7 +40,10 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
                 {
                     Id = c.Author.Id,
                     FirstName = c.Author.FirstName ?? string.Empty,
-                    LastName = c.Author.LastName ?? string.Empty
+                    LastName = c.Author.LastName ?? string.Empty,
+                    AvatarUrl = post.Author.AvatarId != null
+                        ? $"/api/files/avatars/{post.Author.Id}/{post.Author.AvatarId}?v={post.Author.AvatarVersion}"
+                        : null
                 }
             })
             .FirstOrDefault()

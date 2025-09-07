@@ -8,8 +8,10 @@ public class SocialNetworkDbContextFactory : IDesignTimeDbContextFactory<SocialN
     public SocialNetworkDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<SocialNetworkDbContext>();
-        var connectionString = "Host=localhost;Port=5431;Database=socialnet;Username=postgres;Password=mysecretpassword";
-        optionsBuilder.UseNpgsql(connectionString);
+        var cs = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                 ?? "Host=localhost;Port=5432;Database=socialnet;Username=postgres;Password=postgres";
+
+        optionsBuilder.UseNpgsql(cs);
 
         return new SocialNetworkDbContext(optionsBuilder.Options);
     }

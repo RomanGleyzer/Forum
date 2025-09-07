@@ -17,9 +17,14 @@ public sealed class GetCurrentUserProfileQueryHandler(
     UserManager<ApplicationUser> userManager)
     : RequestHandlerBase<GetCurrentUserProfileQuery, ApplicationUserDto>(logger)
 {
-    private readonly ICurrentUserService _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
-    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+    private readonly ICurrentUserService _currentUser = currentUser
+        ?? throw new ArgumentNullException(nameof(currentUser));
+
+    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider
+        ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
+
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+        ?? throw new ArgumentNullException(nameof(userManager));
 
     public override Task<ApplicationUserDto> Handle(GetCurrentUserProfileQuery request, CancellationToken ct) =>
         ExecuteAsync("GetCurrentUserProfile", ct, async (activity, ct) =>
@@ -29,7 +34,8 @@ public sealed class GetCurrentUserProfileQueryHandler(
             var dto = await _userManager.Users
                 .AsNoTracking()
                 .Where(u => u.Id == userId)
-                .Select(u => new {
+                .Select(u => new
+                {
                     u.Id,
                     u.FirstName,
                     u.LastName,
@@ -39,7 +45,7 @@ public sealed class GetCurrentUserProfileQueryHandler(
                     u.AvatarId,
                     u.AvatarVersion
                 })
-                .SingleOrDefaultAsync(ct) 
+                .SingleOrDefaultAsync(ct)
                 ?? throw new UnauthorizedAccessException($"Failed to find a user with the ID: {userId}");
 
             var result = new ApplicationUserDto

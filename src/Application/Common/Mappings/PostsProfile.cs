@@ -24,9 +24,6 @@ public sealed class PostsProfile : Profile
 
         CreateMap<Post, PostPageDto>()
             .ForMember(d => d.Author, opt => opt.MapFrom(s => s.Author))
-            .ForMember(d => d.FeaturedComment,
-                opt => opt.MapFrom(s => s.Comments
-                    .OrderByDescending(c => c.CreationDate)
-                    .FirstOrDefault()));
+            .ForMember(d => d.FeaturedComment, opt => opt.Ignore());
     }
 }

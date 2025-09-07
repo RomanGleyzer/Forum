@@ -18,7 +18,16 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
         var absDir = Path.Combine(_opt.RootPath, relDir);
         Directory.CreateDirectory(absDir);
 
-        using var img = await Image.LoadAsync(image, ct);
+        Image img;
+        try
+        {
+            img = await Image.LoadAsync(image, ct);
+        }
+        catch
+        {
+            throw new ArgumentException("Invalid image file.");
+        }
+
         var size = Math.Min(targetSize, Math.Min(img.Width, img.Height));
         img.Mutate(op => op.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(size, size) }));
 

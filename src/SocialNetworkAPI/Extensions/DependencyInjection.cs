@@ -1,8 +1,8 @@
-﻿using System.Reflection;
-using Application.Features.Posts.Commands;
+﻿using Application.Features.Posts.Commands;
 using FluentValidation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Reflection;
 
 namespace SocialNetworkAPI.Extensions;
 
@@ -28,23 +28,13 @@ public static class DependencyInjection
                 tracing
                     .SetResourceBuilder(
                         ResourceBuilder.CreateDefault()
-                            .AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+                            .AddService(serviceName, serviceVersion))
                     .AddAspNetCoreInstrumentation(o =>
                     {
                         o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
                     })
                     .AddHttpClientInstrumentation()
-                    .AddSource(
-                        "GetCurrentUserProfileQueryHandler",
-                        "GetCurrentUserQueryHandler",
-                        "UpdateUserCommandHandler",
-                        "CreatePostCommandHandler",
-                        "GetPostByIdQueryHandler",
-                        "GetPostsByCursorQueryHandler",
-                        "GetUserPostsQueryHandler",
-                        "RegisterUserCommandHandler",
-                        "LoginUserCommandHandler",
-                        "UploadUserAvatarCommandHandler")
+                    .AddSource("Application.Handlers")
                     .AddConsoleExporter(); // только в Development
             });
 
