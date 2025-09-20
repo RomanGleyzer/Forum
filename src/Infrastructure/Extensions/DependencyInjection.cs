@@ -11,15 +11,12 @@ using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Context;
 using Infrastructure.Persistence.Repositories;
-using Infrastructure.Providers;
 using Infrastructure.Services;
 using Infrastructure.Storage;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -55,10 +52,7 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("PostgreSQLConnection string is missing.");
 
         services.AddDbContext<SocialNetworkDbContext>(options =>
-            options.UseNpgsql(conString, npgsql =>
-            {
-                npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-            }));
+            options.UseNpgsql(conString, npgsql => npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)));
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
@@ -71,44 +65,25 @@ public static class DependencyInjection
         services.AddScoped<IPostRepository, PostRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IPostReadModelRepository, PostReadModelRepository>();
+        services.AddScoped<IIdentityService, IdentityService>();
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         services.AddSingleton<IAvatarStorage, LocalAvatarStorage>();
-        services.AddSingleton<IUserAvatarUrlProvider, UserAvatarUrlProvider>();
-        services.AddSingleton<ICurrentUserCacheFactory, CurrentUserCacheFactory>();
 
         var redisConnectionString = config.GetConnectionString("Redis")
             ?? throw new InvalidOperationException("Redis connection string is missing.");
-
-        services.AddSingleton<IConnectionMultiplexer>(_ =>
-        {
-            var options = ConfigurationOptions.Parse(redisConnectionString);
-            options.AbortOnConnectFail = false;
-            return ConnectionMultiplexer.Connect(options);
-        });
-
-        services.AddSingleton<IDistributedCache>(sp =>
-        {
-            var mux = sp.GetRequiredService<IConnectionMultiplexer>();
-            return new RedisCache(new RedisCacheOptions
-            {
-                InstanceName = "app:",
-                ConnectionMultiplexerFactory = () => Task.FromResult(mux)
-            });
-        });
-
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICurrentUserCacheFactory, CurrentUserCacheFactory>();
 
         services.AddOptions<AvatarRulesOptions>()
             .BindConfiguration(AvatarRulesOptions.SectionName)
             .ValidateDataAnnotations()
-            .Validate(static o =>
-                o.AllowedMimeTypes.All(m =>
-                    m.StartsWith("image/", StringComparison.OrdinalIgnoreCase)),
+            .Validate(static o => o.AllowedMimeTypes.All(m => m.StartsWith("image/", StringComparison.OrdinalIgnoreCase)),
                 "All AllowedMimeTypes must start with 'image/'.")
             .ValidateOnStart();
 
@@ -117,9 +92,6 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .Validate(static o => !Path.IsPathRooted(o.AvatarsPath),
                 "AvatarsPath must be a relative path (not rooted).")
-            .Validate(static o => string.IsNullOrWhiteSpace(o.BaseUrl) ||
-                                  Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
-                "BaseUrl must be either empty or an absolute URL.")
             .ValidateOnStart();
 
         services.AddOptions<JwtOptions>()
@@ -164,7 +136,6 @@ public static class DependencyInjection
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                     ClockSkew = TimeSpan.Zero,
                     ValidTypes = ["JWT"],
-
                     RoleClaimType = "role",
                     NameClaimType = ClaimTypes.NameIdentifier
                 };

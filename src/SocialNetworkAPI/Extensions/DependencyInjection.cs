@@ -1,5 +1,6 @@
 ﻿using Application.Features.Posts.Commands;
 using FluentValidation;
+using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Reflection;
@@ -34,8 +35,15 @@ public static class DependencyInjection
                         o.Filter = ctx => !ctx.Request.Path.StartsWithSegments("/health");
                     })
                     .AddHttpClientInstrumentation()
-                    .AddSource("Application.Handlers")
-                    .AddConsoleExporter(); // только в Development
+                    .AddSource("Application.Handlers");
+
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                if (string.Equals(env, Environments.Development, StringComparison.OrdinalIgnoreCase))
+                    tracing.AddConsoleExporter();
+
+                var otlp = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+                if (!string.IsNullOrWhiteSpace(otlp))
+                    tracing.AddOtlpExporter();
             });
 
         return services;

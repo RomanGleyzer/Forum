@@ -1,5 +1,4 @@
-﻿using Application.Exceptions;
-using FluentValidation;
+﻿using FluentValidation;
 using System.Net;
 using System.Text.Json;
 
@@ -8,15 +7,22 @@ namespace SocialNetworkAPI.Middleware;
 public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+   
+    private readonly RequestDelegate _next = next 
+        ?? throw new ArgumentNullException(nameof(next));
+
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger = logger 
+        ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await next(context);
+            await _next(context);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unhandled exception while processing {Method} {Path}", context.Request?.Method, context.Request?.Path);
             await WriteProblemAsync(context, ex);
         }
     }
@@ -45,11 +51,6 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         {
             UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, "Unauthorized"),
             ValidationException => ((int)HttpStatusCode.BadRequest, "Validation failed"),
-
-            var _ when ex.GetType().IsGenericType
-                        && ex.GetType().GetGenericTypeDefinition() == typeof(NotFoundException<>)
-                => ((int)HttpStatusCode.NotFound, "Not Found"),
-
             _ => ((int)HttpStatusCode.InternalServerError, "Unexpected error")
         };
     }

@@ -1,9 +1,11 @@
+using Application.Abstractions;
 using Infrastructure.Extensions;
 using Infrastructure.Logging;
 using Infrastructure.Persistence.Context;
 using Serilog;
 using SocialNetworkAPI.Extensions;
 using SocialNetworkAPI.Middleware;
+using SocialNetworkAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +17,13 @@ builder.Host.UseSerilog((context, config) =>
 });
 
 builder.Services.AddApplicationServices();
+
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddScoped<IUserAvatarUrlProvider, UserAvatarUrlProvider>();
+
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
 
 if (builder.Environment.IsDevelopment())
 {

@@ -1,4 +1,5 @@
 ﻿using Application.Abstractions.Auth;
+using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Common.Options;
 using Domain.Entities;
@@ -13,18 +14,14 @@ using System.Security.Claims;
 namespace Application.Features.Users.Commands;
 
 public sealed class LoginUserCommandHandler(
-    UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager,
+    IIdentityService identity,
     ILogger<LoginUserCommandHandler> logger,
     IJwtTokenFactory jwtTokenFactory,
     IOptions<JwtOptions> options)
     : RequestHandlerBase<LoginUserCommand, AuthTokenResponse>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager
-        ?? throw new ArgumentNullException(nameof(userManager));
-
-    private readonly SignInManager<ApplicationUser> _signInManager = signInManager
-        ?? throw new ArgumentNullException(nameof(signInManager));
+    private readonly IIdentityService _identity = identity
+        ?? throw new ArgumentNullException(nameof(identity));
 
     private readonly IJwtTokenFactory _jwtTokenFactory = jwtTokenFactory
         ?? throw new ArgumentNullException(nameof(jwtTokenFactory));
@@ -39,12 +36,12 @@ public sealed class LoginUserCommandHandler(
             if (string.IsNullOrWhiteSpace(email))
                 throw new ValidationException("Email is required.");
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _identity.FindByEmailAsync(email, ct);
             if (user is null)
                 return FailUnauthorized(activity);
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-            if (!result.Succeeded)
+            var successfully = await _identity.CheckPasswordAsync(user.Id, request.Password, ct);
+            if (!successfully)
                 return FailUnauthorized(activity);
 
             var claims = new[]

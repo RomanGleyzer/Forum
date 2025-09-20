@@ -105,7 +105,11 @@ const fillEditProfileForm = (u) => {
 };
 
 const getUserPosts = async (userId, skip = 0, take = 10) => {
-    const { ok, json } = await http.get(`/api/posts/${encodeURIComponent(userId)}/posts?skip=${skip}&take=${take}`);
+
+    const { ok, json } = await http.get(
+        `/api/users/${encodeURIComponent(userId)}/posts?skip=${skip}&take=${take}`
+    );
+
     if (!ok) throw new Error(json?.message || 'Ошибка загрузки постов');
     return Array.isArray(json) ? json : [];
 };
@@ -119,10 +123,17 @@ const renderPosts = (posts) => {
 
     const frag = dom.fragment();
     for (const p of posts) {
+        const avatar = p.author?.avatarUrl
+            ? `<img src="${fmt.escape(p.author.avatarUrl)}" alt="avatar" 
+                   class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">`
+            : `<div class="rounded-circle bg-secondary me-2" 
+                   style="width:32px;height:32px;"></div>`;
+
         const card = dom.create('div', 'card mb-3 shadow-sm rounded-4');
         card.innerHTML = `
       <div class="card-body">
         <div class="d-flex align-items-center mb-2">
+          ${avatar}
           <div class="fw-semibold me-2">${fmt.escape(p.author?.firstName || '')} ${fmt.escape(p.author?.lastName || '')}</div>
           <small class="text-muted">${fmt.dateTime(p.creationDate)}</small>
         </div>

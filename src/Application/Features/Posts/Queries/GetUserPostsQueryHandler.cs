@@ -12,7 +12,7 @@ public sealed class GetUserPostsQueryHandler(
     : RequestHandlerBase<GetUserPostsQuery, IReadOnlyCollection<PostPageDto>>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository
-        ?? throw new ArgumentNullException(nameof(logger));
+        ?? throw new ArgumentNullException(nameof(repository));
 
     public override Task<IReadOnlyCollection<PostPageDto>> Handle(GetUserPostsQuery request, CancellationToken ct) =>
         ExecuteAsync("GetUserPosts", ct, async (activity, ct) =>

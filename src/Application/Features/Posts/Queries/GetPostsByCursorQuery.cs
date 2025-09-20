@@ -4,6 +4,6 @@ using MediatR;
 namespace Application.Features.Posts.Queries;
 
 public record GetPostsByCursorQuery(
-    DateTime? CursorCreatedAt,
+    DateTimeOffset? CursorCreatedAt,
     Guid? CursorId,
     int Take) : IRequest<IReadOnlyList<PostPageDto>>;

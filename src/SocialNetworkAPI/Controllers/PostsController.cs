@@ -1,6 +1,7 @@
 ﻿using Application.DTOs.Posts;
 using Application.Features.Posts.Commands;
 using Application.Features.Posts.Queries;
+using Application.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +13,10 @@ namespace SocialNetworkAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-public sealed class PostsController(ISender sender) : ControllerBase
+public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avatarUrlProvider) : ControllerBase
 {
     private readonly ISender _sender = sender;
+    private readonly IUserAvatarUrlProvider _avatar = avatarUrlProvider;
 
     [HttpGet("{id:guid}", Name = "GetPostById")]
     [ProducesResponseType(typeof(PostPageDto), StatusCodes.Status200OK)]
@@ -22,30 +24,21 @@ public sealed class PostsController(ISender sender) : ControllerBase
     public async Task<ActionResult<PostPageDto>> Get(Guid id, CancellationToken cancellationToken)
     {
         var post = await _sender.Send(new GetPostByIdQuery(id), cancellationToken);
-        return post is null ? NotFound() : Ok(post);
+        if (post is null) return NotFound();
+        Enrich(post);
+        return Ok(post);
     }
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<PostPageDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetPostsByCursor(
-        [FromQuery] DateTime? cursorCreatedAt,
+        [FromQuery] DateTimeOffset? cursorCreatedAt,
         [FromQuery] Guid? cursorId,
         [FromQuery, Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
         var posts = await _sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);
-        return Ok(posts);
-    }
-
-    [HttpGet("{userId}/posts")]
-    [ProducesResponseType(typeof(IReadOnlyList<PostPageDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetUserPosts(
-        string userId,
-        [FromQuery, Range(0, int.MaxValue)] int skip = 0,
-        [FromQuery, Range(1, 100)] int take = 10,
-        CancellationToken cancellationToken = default)
-    {
-        var posts = await _sender.Send(new GetUserPostsQuery(userId, skip, take), cancellationToken);
+        foreach (var p in posts) Enrich(p);
         return Ok(posts);
     }
 
@@ -56,9 +49,18 @@ public sealed class PostsController(ISender sender) : ControllerBase
         CancellationToken cancellationToken)
     {
         var postId = await _sender.Send(command, cancellationToken);
+        var dto = await _sender.Send(new GetPostByIdQuery(postId), cancellationToken);
+        Enrich(dto);
         return CreatedAtRoute(
             routeName: "GetPostById",
             routeValues: new { id = postId },
-            value: new { id = postId });
+            value: dto);
+    }
+
+    private void Enrich(PostPageDto dto)
+    {
+        dto.Author.AvatarUrl = _avatar.BuildUserAvatarUrl(dto.Author.Id, dto.Author.AvatarId, dto.Author.AvatarVersion);
+        if (dto.FeaturedComment?.Author is { } ca)
+            ca.AvatarUrl = _avatar.BuildUserAvatarUrl(ca.Id, ca.AvatarId, ca.AvatarVersion);
     }
 }

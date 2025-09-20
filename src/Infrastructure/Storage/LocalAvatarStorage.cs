@@ -45,11 +45,4 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
                 File.Delete(file);
         return Task.CompletedTask;
     }
-
-    public string BuildPublicUrl(string userId, Guid? avatarId, int version)
-    {
-        var baseUrl = _opt.BaseUrl?.TrimEnd('/') ?? string.Empty;
-        var rel = $"{_opt.AvatarsPath.Trim('/')}/{userId}/{avatarId:N}.webp?v={version}";
-        return string.IsNullOrEmpty(baseUrl) ? $"/{rel}" : $"{baseUrl}/{rel}";
-    }
 }

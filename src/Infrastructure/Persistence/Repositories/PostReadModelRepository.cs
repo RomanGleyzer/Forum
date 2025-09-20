@@ -24,9 +24,8 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
             Id = post.Author.Id,
             FirstName = post.Author.FirstName ?? string.Empty,
             LastName = post.Author.LastName ?? string.Empty,
-            AvatarUrl = post.Author.AvatarId != null
-                ? $"/api/files/avatars/{post.Author.Id}/{post.Author.AvatarId}?v={post.Author.AvatarVersion}"
-                : null
+            AvatarId = post.Author.AvatarId,
+            AvatarVersion = post.Author.AvatarVersion
         },
         FeaturedComment = post.Comments
             .OrderByDescending(c => c.CreationDate)
@@ -41,9 +40,8 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
                     Id = c.Author.Id,
                     FirstName = c.Author.FirstName ?? string.Empty,
                     LastName = c.Author.LastName ?? string.Empty,
-                    AvatarUrl = post.Author.AvatarId != null
-                        ? $"/api/files/avatars/{post.Author.Id}/{post.Author.AvatarId}?v={post.Author.AvatarVersion}"
-                        : null
+                    AvatarId = c.Author.AvatarId,
+                    AvatarVersion = c.Author.AvatarVersion
                 }
             })
             .FirstOrDefault()

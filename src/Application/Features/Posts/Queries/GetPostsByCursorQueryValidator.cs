@@ -18,7 +18,7 @@ public class GetPostsByCursorQueryValidator : AbstractValidator<GetPostsByCursor
         When(x => x.CursorCreatedAt.HasValue && x.CursorId.HasValue, () =>
         {
             RuleFor(x => x.CursorCreatedAt)
-                .Must(d => d.HasValue && d.Value > DateTime.MinValue)
+                .Must(d => d.HasValue && d.Value > DateTimeOffset.MinValue)
                 .WithMessage("cursorCreatedAt must be a valid date.");
 
             RuleFor(x => x.CursorId)
