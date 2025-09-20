@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿<!-- profile.html -->
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="utf-8" />
@@ -9,35 +10,41 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body>
-    <nav class="navbar navbar-light bg-white border-bottom sticky-top shadow-sm py-2 px-3">
+<body class="ui-shell">
+    <a href="#profile-main" class="ui-skip-link">Перейти к содержимому</a>
+    <nav class="navbar navbar-light bg-white border-bottom sticky-top shadow-sm py-2 px-3" role="navigation" aria-label="Основная навигация">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold text-primary fs-3 me-3" href="index.html" style="letter-spacing:0.5px;">SocNet</a>
             <form class="d-none d-md-flex ms-auto" style="max-width:400px; width:100%;">
                 <input type="search" class="form-control rounded-pill" placeholder="Поиск по SocNet...">
             </form>
+            <button id="theme-toggle" class="btn btn-sm btn-outline-secondary ms-2" aria-label="Переключить тему">
+                <i class="bi bi-moon"></i>
+            </button>
         </div>
     </nav>
+
     <div class="container-fluid">
         <div class="row flex-nowrap">
-            <aside class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-white border-end min-vh-100 sidebar-nav shadow-sm position-sticky" style="top: 0; height: 100vh; z-index: 100;">
+            <aside class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-white border-end min-vh-100 sidebar-nav shadow-sm position-sticky"
+                   style="top: 0; height: 100vh; z-index: 100;" aria-label="Боковая навигация">
                 <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-4">
                     <ul class="nav nav-pills flex-column mb-auto w-100 gap-2">
                         <li class="nav-item w-100">
                             <a href="index.html" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-house me-2"></i>
+                                <i class="bi bi-house me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Лента</span>
                             </a>
                         </li>
                         <li class="nav-item w-100">
                             <a href="#" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-chat-dots me-2"></i>
+                                <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Сообщения</span>
                             </a>
                         </li>
                         <li class="nav-item w-100">
                             <a href="#" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-people me-2"></i>
+                                <i class="bi bi-people me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Друзья</span>
                             </a>
                         </li>
@@ -49,35 +56,192 @@
                     </ul>
                 </div>
             </aside>
-            <main class="col px-3 py-5">
+
+            <main id="profile-main" class="col px-3 py-5" role="main" tabindex="-1">
                 <div class="row justify-content-center">
-                    <div class="col-lg-10 col-xl-9">
-                        <div class="card rounded-4 shadow-lg border-0 mb-4 text-center">
-                            <div class="profile-cover"></div>
-                            <div class="card-body pt-0">
+                    <div class="col-12 col-xl-10">
 
-                                <div class="position-relative d-inline-block">
-                                    <img id="profile-avatar" src="images/user-default.png" alt="User avatar"
-                                         class="profile-avatar rounded-circle mb-2">
-
-                                    <input type="file" id="avatar-upload" accept="image/*" class="d-none">
-
-                                    <button type="button" id="change-avatar-btn"
-                                            class="btn btn-sm btn-light border position-absolute bottom-0 end-0 rounded-circle"
-                                            style="transform: translate(10%, -10%);">
-                                        <i class="bi bi-camera"></i>
-                                    </button>
+                        <!-- Профиль: шапка (усовершенствованная) -->
+                        <section class="card rounded-4 shadow-lg border-0 mb-4 ui-surface ui-profile-header overflow-hidden">
+                            <!-- Кавер с именем и мета -->
+                            <div class="profile-cover ui-profile-cover position-relative">
+                                <div class="position-absolute bottom-0 start-0 p-3 text-white">
+                                    <h1 id="profile-fullname" class="fw-bold h3 mb-1"></h1>
+                                    <ul class="list-inline small mb-0">
+                                        <li class="list-inline-item me-3">
+                                            <i class="bi bi-envelope me-1" aria-hidden="true"></i>
+                                            <span id="profile-email"></span>
+                                        </li>
+                                        <li class="list-inline-item">
+                                            <i class="bi bi-cake2 me-1" aria-hidden="true"></i>
+                                            <span id="profile-birthdate"></span>
+                                        </li>
+                                    </ul>
                                 </div>
-
-                                <h4 id="profile-fullname" class="fw-bold mt-2 mb-1"></h4>
-                                <div id="profile-email" class="text-muted mb-2"></div>
-                                <div id="profile-birthdate" class="text-muted mb-2"></div>
-                                <div id="profile-bio" class="profile-bio mb-3"></div>
-                                <button class="btn btn-outline-primary btn-sm px-3 mt-2" id="edit-profile-btn">
-                                    <i class="bi bi-pencil"></i> Редактировать
-                                </button>
                             </div>
+
+                            <div class="card-body pt-4">
+                                <div class="row align-items-center g-4">
+                                    <!-- Левая колонка: аватар -->
+                                    <div class="col-md-3 d-flex justify-content-center justify-content-md-start">
+                                        <div class="position-relative ui-profile-avatar-wrap">
+                                            <img id="profile-avatar" src="images/user-default.png" alt="Аватар профиля"
+                                                 class="profile-avatar rounded-circle ui-avatar shadow-sm" width="140" height="140" loading="lazy">
+                                            <input type="file" id="avatar-upload" accept="image/*" class="d-none">
+                                            <button type="button" id="change-avatar-btn" aria-label="Сменить аватар"
+                                                    class="btn btn-sm btn-light border position-absolute bottom-0 end-0 rounded-circle ui-action-fab shadow"
+                                                    style="transform: translate(10%, -10%);" data-ui-tooltip="Сменить аватар">
+                                                <i class="bi bi-camera" aria-hidden="true"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Центральная колонка: био + действия -->
+                                    <div class="col-md-6 text-center text-md-start">
+                                        <div id="profile-bio" class="profile-bio ui-prose mb-3 text-muted"></div>
+                                        <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-2">
+                                            <button class="btn btn-outline-primary btn-sm px-3" id="edit-profile-btn" data-ui-tooltip="Редактировать профиль">
+                                                <i class="bi bi-pencil"></i> Редактировать
+                                            </button>
+                                            <button class="btn btn-light btn-sm px-3">
+                                                <i class="bi bi-share"></i> Поделиться
+                                            </button>
+                                            <button class="btn btn-light btn-sm px-3">
+                                                <i class="bi bi-gear"></i> Настройки
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Правая колонка: статистика -->
+                                    <div class="col-md-3">
+                                        <div class="row text-center g-2">
+                                            <div class="col-4 col-md-12">
+                                                <div class="ui-stat">
+                                                    <div class="ui-stat__value" id="stat-posts">—</div>
+                                                    <div class="ui-stat__label">Посты</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4 col-md-12">
+                                                <div class="ui-stat">
+                                                    <div class="ui-stat__value" id="stat-followers">—</div>
+                                                    <div class="ui-stat__label">Подписчики</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-4 col-md-12">
+                                                <div class="ui-stat">
+                                                    <div class="ui-stat__value" id="stat-following">—</div>
+                                                    <div class="ui-stat__label">Подписки</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Профиль: контент -->
+                        <div class="row g-4">
+                            <div class="col-lg-8">
+                                <!-- Вкладки -->
+                                <nav class="ui-divider mb-3 pb-2" aria-label="Разделы профиля">
+                                    <ul class="nav nav-tabs ui-profile-tabs" id="profileTabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="tab-posts" data-bs-toggle="tab" data-bs-target="#panel-posts" type="button" role="tab" aria-controls="panel-posts" aria-selected="true">
+                                                <i class="bi bi-chat-left-text me-1" aria-hidden="true"></i> Посты
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="tab-media" data-bs-toggle="tab" data-bs-target="#panel-media" type="button" role="tab" aria-controls="panel-media" aria-selected="false">
+                                                <i class="bi bi-images me-1" aria-hidden="true"></i> Медиа
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+
+                                <div class="tab-content">
+                                    <!-- Панель: Посты -->
+                                    <section id="panel-posts" class="tab-pane fade show active" role="tabpanel" aria-labelledby="tab-posts">
+                                        <h2 id="user-posts-title" class="visually-hidden">Ваши посты</h2>
+                                        <div id="profile-posts" aria-live="polite" aria-busy="false">
+                                            <div class="text-center text-muted py-5 opacity-75" id="no-posts" role="status">
+                                                <i class="bi bi-card-text fs-2 mb-3 d-block" aria-hidden="true"></i>
+                                                У вас пока нет постов.
+                                            </div>
+
+                                            <!-- Скелетоны -->
+                                            <div class="d-none" id="profile-posts-skeleton">
+                                                <article class="card mb-3 p-3">
+                                                    <div class="d-flex gap-3">
+                                                        <div class="ui-skeleton rounded-circle" style="inline-size:48px; block-size:48px;"></div>
+                                                        <div class="flex-grow-1">
+                                                            <div class="ui-skeleton mb-2" style="inline-size:40%; block-size:14px;"></div>
+                                                            <div class="ui-skeleton mb-2" style="inline-size:100%; block-size:14px;"></div>
+                                                            <div class="ui-skeleton" style="inline-size:90%; block-size:14px;"></div>
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                                <article class="card mb-3 p-3">
+                                                    <div class="ui-skeleton ui-media ui-media--16x9"></div>
+                                                </article>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Панель: О себе -->
+                                    <section id="panel-about" class="tab-pane fade" role="tabpanel" aria-labelledby="tab-about">
+                                        <div class="card ui-surface p-3 text-center">
+                                            <h3 class="h5 fw-bold mb-3">Информация</h3>
+                                            <dl class="row justify-content-center mb-0">
+                                                <dt class="col-sm-4 text-muted">E-mail</dt>
+                                                <dd class="col-sm-8"><span id="profile-email"></span></dd>
+
+                                                <dt class="col-sm-4 text-muted">Дата рождения</dt>
+                                                <dd class="col-sm-8"><span id="profile-birthdate"></span></dd>
+
+                                                <dt class="col-sm-4 text-muted">О себе</dt>
+                                                <dd class="col-sm-8"><div id="profile-bio" class="ui-prose text-center"></div></dd>
+                                            </dl>
+                                        </div>
+                                    </section>
+
+                                    <!-- Панель: Медиа -->
+                                    <section id="panel-media" class="tab-pane fade" role="tabpanel" aria-labelledby="tab-media">
+                                        <div class="card ui-surface p-3">
+                                            <h3 class="h5 fw-bold mb-3">Медиа</h3>
+                                            <div class="row g-3">
+                                                <div class="col-6">
+                                                    <div class="ui-media ui-media--1x1 ui-skeleton"></div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="ui-media ui-media--1x1 ui-skeleton"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted small mt-3">Здесь будут фото и видео из ваших постов.</div>
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+
+                            <!-- Боковая колонка -->
+                            <aside class="col-lg-4">
+
+                                <div class="card ui-surface">
+                                    <div class="card-body">
+                                        <h3 class="h6 fw-bold mb-3">Быстрые действия</h3>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-primary btn-sm">
+                                                <i class="bi bi-plus-circle me-1"></i> Новый пост
+                                            </button>
+                                            <button class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-upload me-1"></i> Загрузить фото
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </aside>
                         </div>
+
+                        <!-- Модалка -->
                         <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <form class="modal-content" id="edit-profile-form" autocomplete="off">
@@ -116,22 +280,13 @@
                                 </form>
                             </div>
                         </div>
-                        <section id="user-posts">
-                            <h2 class="h5 mb-3 fw-bold">
-                                <i class="bi bi-chat-left-text me-2"></i>Ваши посты
-                            </h2>
-                            <div id="profile-posts">
-                                <div class="text-center text-muted py-5 opacity-75" id="no-posts">
-                                    <i class="bi bi-card-text fs-2 mb-3 d-block"></i>
-                                    У вас пока нет постов.
-                                </div>
-                            </div>
-                        </section>
+                        <!-- /модалка -->
                     </div>
                 </div>
             </main>
         </div>
     </div>
+
     <script type="module" src="shared.js"></script>
     <script type="module" src="js/profile.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

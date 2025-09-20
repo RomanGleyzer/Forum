@@ -9,37 +9,40 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body>
-    <!-- Шапка только логотип + поиск -->
-    <nav class="navbar navbar-light bg-white border-bottom sticky-top shadow-sm py-2 px-3">
+<body class="ui-shell">
+    <a href="#main-content" class="ui-skip-link">Перейти к содержимому</a>
+    <nav class="navbar navbar-light bg-white border-bottom sticky-top shadow-sm py-2 px-3" role="navigation" aria-label="Основная навигация">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold text-primary fs-3 me-3" href="index.html" style="letter-spacing:0.5px;">SocNet</a>
-            <form class="d-none d-md-flex ms-auto" style="max-width:400px; width:100%;">
-                <input type="search" class="form-control rounded-pill" placeholder="Поиск по SocNet...">
+            <form class="d-none d-md-flex ms-auto" role="search" aria-label="Поиск по SocNet" style="max-width:400px; width:100%;">
+                <input type="search" class="form-control rounded-pill ui-input" placeholder="Поиск по SocNet..." aria-label="Поиск по SocNet">
             </form>
+            <button id="theme-toggle" class="btn btn-sm btn-outline-secondary ms-2" aria-label="Переключить тему">
+                <i class="bi bi-moon"></i>
+            </button>
         </div>
     </nav>
     <div class="container-fluid">
         <div class="row flex-nowrap">
-            <!-- Sidebar left: навигация -->
-            <aside class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-white border-end min-vh-100 sidebar-nav shadow-sm position-sticky" style="top: 0; height: 100vh; z-index: 100;">
+            <aside class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-white border-end min-vh-100 sidebar-nav shadow-sm position-sticky"
+                   style="top: 0; height: 100vh; z-index: 100;" aria-label="Боковая навигация">
                 <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-4">
                     <div class="w-100 mb-4">
                         <div class="d-flex align-items-center p-2 rounded-3 user-block shadow-sm bg-light">
-                            <img id="sidebar-avatar" src="images/user-default.png" alt="User avatar" class="rounded-circle me-3" width="44" height="44">
+                            <img id="sidebar-avatar" src="images/user-default.png" alt="Аватар пользователя" class="rounded-circle me-3 ui-avatar" width="44" height="44">
                             <div id="sidebar-username" class="fw-semibold"></div>
                         </div>
                     </div>
                     <ul class="nav nav-pills flex-column mb-auto w-100 gap-2">
                         <li class="nav-item w-100">
-                            <a href="index.html" class="nav-link active d-flex align-items-center px-3">
-                                <i class="bi bi-house me-2"></i>
+                            <a href="index.html" class="nav-link active d-flex align-items-center px-3" aria-current="page">
+                                <i class="bi bi-house me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Лента</span>
                             </a>
                         </li>
                         <li class="nav-item w-100">
                             <a href="profile.html" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-person me-2"></i>
+                                <i class="bi bi-person me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Профиль</span>
                             </a>
                         </li>
@@ -50,37 +53,38 @@
                         </li>
                         <li class="nav-item w-100">
                             <a href="#" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-chat-dots me-2"></i>
+                                <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Сообщения</span>
                             </a>
                         </li>
                         <li class="nav-item w-100">
                             <a href="#" class="nav-link d-flex align-items-center px-3">
-                                <i class="bi bi-people me-2"></i>
+                                <i class="bi bi-people me-2" aria-hidden="true"></i>
                                 <span class="d-none d-sm-inline">Друзья</span>
                             </a>
                         </li>
                     </ul>
                 </div>
             </aside>
-            <!-- Feed center -->
-            <main class="col px-3 py-5">
-                <div class="feed-bg p-4 mb-4 shadow-sm">
+            <main id="main-content" class="col px-3 py-5" tabindex="-1" role="main">
+                <div class="feed-bg p-4 mb-4 shadow-sm ui-surface ui-feed">
                     <div class="d-flex align-items-center mb-4">
-                        <i class="bi bi-house-heart text-primary fs-2 me-3"></i>
+                        <i class="bi bi-house-heart text-primary fs-2 me-3" aria-hidden="true"></i>
                         <span class="fw-semibold fs-4">Лента</span>
                     </div>
-                    <!-- Создание поста -->
-                    <section id="create-post" class="d-none">
+                    <section id="create-post" class="d-none" aria-labelledby="create-post-title">
                         <div class="card mb-4 post-card">
                             <div class="card-body">
                                 <form id="post-form">
                                     <div class="d-flex align-items-start mb-3">
-                                        <img id="composer-avatar" src="images/user-default.png" alt="User avatar" class="rounded-circle me-3" width="48" height="48">
-                                        <textarea id="post-content" class="form-control flex-fill" placeholder="Что у вас нового?" rows="3" required></textarea>
+                                        <img id="composer-avatar" src="images/user-default.png" alt="Ваш аватар"
+                                             class="rounded-circle me-3 ui-avatar" width="48" height="48">
+                                        <textarea id="post-content" class="form-control flex-fill ui-input"
+                                                  placeholder="Что у вас нового?" rows="3" required
+                                                  aria-label="Текст поста" maxlength="1000"></textarea>
                                     </div>
                                     <div class="d-flex justify-content-end">
-                                        <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm">
+                                        <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm ui-button" aria-label="Опубликовать пост">
                                             <i class="bi bi-send"></i> Опубликовать
                                         </button>
                                     </div>
@@ -88,10 +92,9 @@
                             </div>
                         </div>
                     </section>
-                    <!-- Посты -->
-                    <ul id="posts" class="list-unstyled mb-0">
-                        <li class="text-center text-muted py-5 opacity-75" id="no-posts" style="list-style: none;">
-                            <i class="bi bi-card-text fs-2 mb-3 d-block"></i>
+                    <ul id="posts" class="list-unstyled mb-0" aria-live="polite" aria-busy="false">
+                        <li class="text-center text-muted py-5 opacity-75" id="no-posts" role="status" style="list-style: none;">
+                            <i class="bi bi-card-text fs-2 mb-3 d-block" aria-hidden="true"></i>
                             В ленте пока нет постов.
                         </li>
                     </ul>

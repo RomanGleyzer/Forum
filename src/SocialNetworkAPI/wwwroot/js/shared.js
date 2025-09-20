@@ -118,3 +118,19 @@ export const ui = {
         return sp;
     },
 };
+
+const toggleBtn = document.getElementById("theme-toggle");
+const body = document.body;
+
+if (localStorage.getItem("theme") === "dark") {
+    body.classList.add("theme-dark");
+}
+
+toggleBtn?.addEventListener("click", () => {
+    body.classList.toggle("theme-dark");
+    if (body.classList.contains("theme-dark")) {
+        localStorage.setItem("theme", "dark");
+    } else {
+        localStorage.setItem("theme", "light");
+    }
+});
