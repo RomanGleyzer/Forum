@@ -33,7 +33,6 @@ async function loadPosts() {
     if (endReached || loading) return;
     loading = true;
 
-    // Отменяем предыдущий запрос (если был)
     inflightCtrl?.abort();
     inflightCtrl = new AbortController();
 
@@ -65,7 +64,6 @@ async function loadPosts() {
     dom.show(noPostsMsg, false);
     renderPosts(posts);
 
-    // обновляем курсор по последнему посту на странице
     const last = posts[posts.length - 1];
     cursorCreatedAt = last?.creationDate ?? cursorCreatedAt;
     cursorId = last?.id ?? cursorId;
@@ -73,41 +71,8 @@ async function loadPosts() {
 
 function renderPosts(posts) {
     const frag = dom.fragment();
-    for (const post of posts) frag.append(renderPost(post));
+    for (const post of posts) frag.append(window.renderPost(post));
     postsList.append(frag);
-}
-
-function renderPost(post) {
-    const li = dom.create('li', 'mb-4');
-    const avatar = post.author?.avatarUrl || 'images/user-default.png';
-    const name = `${post.author?.firstName ?? ''} ${post.author?.lastName ?? ''}`.trim();
-
-    li.innerHTML = `
-    <div class="card post-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center mb-2">
-          <img src="${fmt.escape(avatar)}" class="rounded-circle me-2" width="40" height="40" alt="avatar">
-          <div>
-            <div class="fw-bold">${fmt.escape(name)}</div>
-            <small class="text-muted">${fmt.dateTime(post.creationDate)}</small>
-          </div>
-        </div>
-        <div class="mb-2">${fmt.escape(post.content ?? '')}</div>
-        ${post.featuredComment ? renderFeaturedComment(post.featuredComment) : ''}
-      </div>
-    </div>`;
-    return li;
-}
-
-function renderFeaturedComment(comment) {
-    return `
-    <div class="mt-3 p-2 rounded bg-light">
-      <div class="small text-muted mb-1">Комментарий:</div>
-      <div>${fmt.escape(comment.content)}</div>
-      <div class="text-end small text-muted mt-1">
-        ${fmt.escape(`${comment.author?.firstName ?? ''} ${comment.author?.lastName ?? ''}`.trim())}
-      </div>
-    </div>`;
 }
 
 function ensureEndOfFeed() {
