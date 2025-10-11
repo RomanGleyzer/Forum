@@ -1,6 +1,5 @@
 ﻿using Application.Features.Posts.Commands;
 using FluentValidation;
-using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Reflection;

@@ -6,6 +6,7 @@ using Serilog;
 using SocialNetworkAPI.Extensions;
 using SocialNetworkAPI.Middleware;
 using SocialNetworkAPI.Services;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,13 +17,35 @@ builder.Host.UseSerilog((context, config) =>
         .Enrich.With<ActivityEnricher>();
 });
 
-builder.Services.AddApplicationServices();
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 20 * 1024 * 1024);
 
+builder.Services.AddRateLimiter(o =>
+{
+    o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+
+    o.AddPolicy("uploads", ctx => RateLimitPartition.GetTokenBucketLimiter(
+        partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        factory: _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 10,
+            TokensPerPeriod = 10,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+
+builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddScoped<IUserAvatarUrlProvider, UserAvatarUrlProvider>();
-
 builder.Services.AddJwtAuthentication(builder.Configuration);
-
 builder.Services.AddHttpContextAccessor();
 
 if (builder.Environment.IsDevelopment())
@@ -32,7 +55,6 @@ if (builder.Environment.IsDevelopment())
 }
 
 builder.Services.AddControllers();
-
 builder.Services.AddHealthChecks().AddDbContextCheck<SocialNetworkDbContext>();
 
 var app = builder.Build();
@@ -54,13 +76,14 @@ app.UseSerilogRequestLogging(opts =>
 });
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 app.UseHttpsRedirection();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseCors("Default");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

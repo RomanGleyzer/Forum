@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Posts;
+﻿using Application.DTOs.Comments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +14,11 @@ public class CommentsController(ISender sender) : ControllerBase
     private readonly ISender _sender = sender;
 
     [HttpGet("{id:guid}", Name = "GetCommentById")]
-    [ProducesResponseType(typeof(PostPageDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CommentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PostPageDto>> Get(Guid id, CancellationToken cancellationToken)
+    public Task<ActionResult<CommentDto>> Get(Guid id, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        return Task.FromResult<ActionResult<CommentDto>>(
+            StatusCode(StatusCodes.Status501NotImplemented));
     }
 }

@@ -1,7 +1,7 @@
-﻿using Application.DTOs.Posts;
+﻿using Application.Abstractions;
+using Application.DTOs.Posts;
 using Application.Features.Posts.Commands;
 using Application.Features.Posts.Queries;
-using Application.Abstractions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

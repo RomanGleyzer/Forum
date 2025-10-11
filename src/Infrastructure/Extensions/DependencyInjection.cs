@@ -101,6 +101,10 @@ public static class DependencyInjection
                 !string.IsNullOrWhiteSpace(o.Issuer) &&
                 !string.IsNullOrWhiteSpace(o.Audience),
                 "JWT options must contain non-empty Key, Issuer and Audience.")
+            .Validate(static o => Encoding.UTF8.GetBytes(o.Key).Length >= 32,
+                "Jwt: Key must be at least 32 bytes.")
+            .Validate(static o => o.ExpiresInMinutes >= 60,
+                "Jwt: ExpiresInMinutes must be >= 60 to match API contract.")
             .ValidateOnStart();
 
         services.AddSingleton<IJwtTokenFactory, JwtTokenFactory>();

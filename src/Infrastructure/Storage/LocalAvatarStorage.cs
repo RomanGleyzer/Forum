@@ -28,11 +28,18 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
             throw new ArgumentException("Invalid image file.");
         }
 
-        var size = Math.Min(targetSize, Math.Min(img.Width, img.Height));
-        img.Mutate(op => op.Resize(new ResizeOptions { Mode = ResizeMode.Crop, Size = new Size(size, size) }));
+        using (img)
+        {
+            var size = Math.Min(targetSize, Math.Min(img.Width, img.Height));
+            img.Mutate(op => op.Resize(new ResizeOptions
+            {
+                Mode = ResizeMode.Crop,
+                Size = new Size(size, size)
+            }));
 
-        var absPath = Path.Combine(absDir, $"{id:N}.webp");
-        await img.SaveAsWebpAsync(absPath, new WebpEncoder { Quality = 85 }, ct);
+            var absPath = Path.Combine(absDir, $"{id:N}.webp");
+            await img.SaveAsWebpAsync(absPath, new WebpEncoder { Quality = 85 }, ct);
+        }
 
         return id;
     }
@@ -41,8 +48,10 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
     {
         var dir = Path.Combine(_opt.RootPath, _opt.AvatarsPath, userId);
         if (Directory.Exists(dir))
+        {
             foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId:N}.*"))
                 File.Delete(file);
+        }
         return Task.CompletedTask;
     }
 }

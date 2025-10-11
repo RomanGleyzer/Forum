@@ -1,6 +1,7 @@
 ﻿using Application.Features.Users.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace SocialNetworkAPI.Controllers;
 
@@ -9,6 +10,7 @@ namespace SocialNetworkAPI.Controllers;
 public sealed class AuthController(ISender sender) : ControllerBase
 {
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     [Produces("application/json")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(AuthTokenResponse), StatusCodes.Status200OK)]

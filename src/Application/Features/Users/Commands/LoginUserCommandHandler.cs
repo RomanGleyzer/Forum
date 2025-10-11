@@ -2,9 +2,7 @@
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Common.Options;
-using Domain.Entities;
 using FluentValidation;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
