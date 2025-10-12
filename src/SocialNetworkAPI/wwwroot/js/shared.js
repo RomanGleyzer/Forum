@@ -1,6 +1,4 @@
-﻿const REDIRECT_TO_LOGIN = () => { location.href = 'login.html'; };
-
-export const storage = {
+﻿export const storage = {
     getToken: () => localStorage.getItem('token'),
     setToken: (t) => localStorage.setItem('token', t),
     clearToken: () => localStorage.removeItem('token'),
@@ -8,72 +6,42 @@ export const storage = {
 
 const buildHeaders = (extra = {}) => {
     const token = storage.getToken();
-    const h = { Accept: 'application/json', ...extra };
-    if (token) h.Authorization = `Bearer ${token}`;
+    const h = { Accept: 'application/json', 'Content-Type': 'application/json', ...extra };
+    if (token) h['Authorization'] = `Bearer ${token}`;
     return h;
 };
 
-const safeJson = async (resp) => {
-    const text = await resp.text().catch(() => '');
-    if (!text) return null;
-    try { return JSON.parse(text); } catch { return null; }
+const safeJson = async (res) => {
+    try { return await res.json(); } catch { return null; }
 };
-
-const handleAuth = (resp) => {
-    if (resp.status === 401) {
-        storage.clearToken();
-        REDIRECT_TO_LOGIN();
-        return false;
-    }
-    return true;
-};
-
-const request = async (url, options = {}, { signal } = {}) => {
-    const ctrl = new AbortController();
-    const compositeSignal = signal
-        ? (AbortSignal.any ? AbortSignal.any([signal, ctrl.signal]) : signal)
-        : ctrl.signal;
-
-    let resp;
-    try {
-        resp = await fetch(url, { ...options, signal: compositeSignal });
-    } catch (err) {
-        if (err?.name === 'AbortError') {
-            return { ok: false, status: 0, json: null, resp: undefined, aborted: true, error: err };
-        }
-        return { ok: false, status: 0, json: null, resp: undefined, aborted: false, error: err };
-    }
-
-    if (!handleAuth(resp)) return { ok: false, status: 401, json: null, resp };
-    const json = await safeJson(resp);
-    return { ok: resp.ok, status: resp.status, json, resp };
-};
-
 
 export const http = {
-    get: (url, opts = {}) =>
-        request(url, { headers: buildHeaders(), ...opts }, opts),
-    post: (url, body, opts = {}) =>
-        request(url, {
-            method: 'POST',
-            headers: buildHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-            ...opts,
-        }, opts),
-    put: (url, body, opts = {}) =>
-        request(url, {
-            method: 'PUT',
-            headers: buildHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-            ...opts,
-        }, opts),
-    upload: (url, formData, opts = {}) =>
-        request(url, {
+    get: async (url, { signal } = {}) => {
+        const res = await fetch(url, { method: 'GET', headers: buildHeaders(), signal });
+        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    },
+    post: async (url, body, { signal } = {}) => {
+        const res = await fetch(url, {
             method: 'POST',
             headers: buildHeaders(),
-            body: formData,
-            ...opts,
-        }, opts),
+            body: JSON.stringify(body),
+            signal
+        });
+        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    },
+    put: async (url, body, { signal } = {}) => {
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: buildHeaders(),
+            body: JSON.stringify(body),
+            signal
+        });
+        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    },
+    del: async (url, { signal } = {}) => {
+        const res = await fetch(url, { method: 'DELETE', headers: buildHeaders(), signal });
+        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    },
 };
 
 export const dom = {
@@ -90,15 +58,22 @@ export const dom = {
 };
 
 export const fmt = {
-    escape: (s) => String(s ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
-    dateTime: (iso, locale = 'ru-RU') => {
-        if (!iso) return 'только что';
+    escape: (s) => {
+        if (s == null) return '';
+        return String(s)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    },
+    dateTime: (iso) => {
+        if (!iso) return '';
         const d = new Date(iso);
-        return Number.isNaN(d.getTime())
-            ? 'только что'
-            : d.toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
+        return d.toLocaleString('ru-RU', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
     },
 };
 
@@ -112,25 +87,9 @@ export const ui = {
         if (!sp) {
             sp = dom.create('div', 'text-center py-3');
             sp.id = id;
-            sp.innerHTML = `<div class="spinner-border" role="status"></div>`;
+            sp.innerHTML = `<div class="spinner-border" role="status" aria-label="Загрузка"></div>`;
             anchor.after(sp);
         }
         return sp;
     },
 };
-
-const toggleBtn = document.getElementById("theme-toggle");
-const body = document.body;
-
-if (localStorage.getItem("theme") === "dark") {
-    body.classList.add("theme-dark");
-}
-
-toggleBtn?.addEventListener("click", () => {
-    body.classList.toggle("theme-dark");
-    if (body.classList.contains("theme-dark")) {
-        localStorage.setItem("theme", "dark");
-    } else {
-        localStorage.setItem("theme", "light");
-    }
-});

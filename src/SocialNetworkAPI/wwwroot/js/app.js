@@ -17,6 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const themeBtn = document.getElementById('theme-toggle');
+    const applyTheme = (t) => {
+        document.body.classList.toggle('theme-dark', t === 'dark');
+        localStorage.setItem('theme', t);
+    };
+    const saved = localStorage.getItem('theme');
+    if (saved) applyTheme(saved);
+
+    themeBtn?.addEventListener('click', () => {
+        const next = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
+        applyTheme(next);
+        themeBtn.setAttribute('aria-pressed', String(next === 'dark'));
+    }, { passive: true });
+
     const loginNav = dom.$('#login-nav');
     const registerNav = dom.$('#register-nav');
     const profileNav = dom.$('#profile-nav');
@@ -34,4 +48,4 @@ document.addEventListener('DOMContentLoaded', () => {
         storage.clearToken();
         location.href = 'login.html';
     }, { passive: true });
-});
+}, { passive: true });
