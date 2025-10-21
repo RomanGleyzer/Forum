@@ -15,16 +15,12 @@ namespace SocialNetworkAPI.Controllers;
 [Produces("application/json")]
 public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avatarUrlProvider) : ControllerBase
 {
-    private readonly IUserAvatarUrlProvider _avatar = avatarUrlProvider;
-    private readonly ISender _sender = sender;
-
     [HttpGet("{id:guid}", Name = "GetPostById")]
     [ProducesResponseType(typeof(PostPageDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PostPageDto>> Get(Guid id, CancellationToken cancellationToken)
     {
-        var post = await _sender.Send(new GetPostByIdQuery(id), cancellationToken);
-        if (post is null) return NotFound();
+        var post = await sender.Send(new GetPostByIdQuery(id), cancellationToken);
         Enrich(post);
         return Ok(post);
     }
@@ -37,7 +33,7 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
         [FromQuery] [Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
-        var posts = await _sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);
+        var posts = await sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);
         foreach (var p in posts) Enrich(p);
         return Ok(posts);
     }
@@ -48,8 +44,8 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
         [FromBody] CreatePostCommand command,
         CancellationToken cancellationToken)
     {
-        var postId = await _sender.Send(command, cancellationToken);
-        var dto = await _sender.Send(new GetPostByIdQuery(postId), cancellationToken);
+        var postId = await sender.Send(command, cancellationToken);
+        var dto = await sender.Send(new GetPostByIdQuery(postId), cancellationToken);
         Enrich(dto);
         return CreatedAtRoute(
             "GetPostById",
@@ -59,8 +55,9 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
 
     private void Enrich(PostPageDto dto)
     {
-        dto.Author.AvatarUrl = _avatar.BuildUserAvatarUrl(dto.Author.Id, dto.Author.AvatarId, dto.Author.AvatarVersion);
+        dto.Author.AvatarUrl =
+            avatarUrlProvider.BuildUserAvatarUrl(dto.Author.Id, dto.Author.AvatarId, dto.Author.AvatarVersion);
         if (dto.FeaturedComment?.Author is { } ca)
-            ca.AvatarUrl = _avatar.BuildUserAvatarUrl(ca.Id, ca.AvatarId, ca.AvatarVersion);
+            ca.AvatarUrl = avatarUrlProvider.BuildUserAvatarUrl(ca.Id, ca.AvatarId, ca.AvatarVersion);
     }
 }

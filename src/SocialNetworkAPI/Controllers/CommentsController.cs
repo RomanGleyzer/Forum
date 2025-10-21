@@ -11,8 +11,6 @@ namespace SocialNetworkAPI.Controllers;
 [Produces("application/json")]
 public class CommentsController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender = sender;
-
     [HttpGet("{id:guid}", Name = "GetCommentById")]
     [ProducesResponseType(typeof(CommentDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -13,13 +13,11 @@ namespace SocialNetworkAPI.Controllers;
 [Produces("application/json")]
 public sealed class UsersController(ISender sender) : ControllerBase
 {
-    private readonly ISender _sender = sender;
-
     [HttpGet("me")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<CurrentUserDto>> GetMe(CancellationToken cancellationToken)
     {
-        var currentUserData = await _sender.Send(new GetCurrentUserQuery(), cancellationToken);
+        var currentUserData = await sender.Send(new GetCurrentUserQuery(), cancellationToken);
         return Ok(currentUserData);
     }
 
@@ -27,7 +25,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<ApplicationUserDto>> GetMyProfile(CancellationToken cancellationToken)
     {
-        var profile = await _sender.Send(new GetCurrentUserProfileQuery(), cancellationToken);
+        var profile = await sender.Send(new GetCurrentUserProfileQuery(), cancellationToken);
         return Ok(profile);
     }
 
@@ -40,7 +38,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
         [FromBody] UpdateUserCommand command,
         CancellationToken cancellationToken)
     {
-        var updatedUser = await _sender.Send(command, cancellationToken);
+        var updatedUser = await sender.Send(command, cancellationToken);
         return Ok(updatedUser);
     }
 }

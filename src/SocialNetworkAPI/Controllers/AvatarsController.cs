@@ -20,7 +20,6 @@ public class AvatarsController(ISender sender) : ControllerBase
     [RequestSizeLimit(20 * 1024 * 1024)]
     public async Task<ActionResult<string>> Upload([FromForm] IFormFile file, CancellationToken cancellationToken)
     {
-        if (file == null) return BadRequest("File is required.");
         await using var stream = file.OpenReadStream();
 
         var command = new UploadUserAvatarCommand(

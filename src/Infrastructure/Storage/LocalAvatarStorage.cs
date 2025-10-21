@@ -47,9 +47,11 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
     public Task DeleteAsync(string userId, Guid avatarId, CancellationToken ct)
     {
         var dir = Path.Combine(_opt.RootPath, _opt.AvatarsPath, userId);
-        if (Directory.Exists(dir))
-            foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId:N}.*"))
-                File.Delete(file);
+        if (!Directory.Exists(dir)) return Task.CompletedTask;
+
+        foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId:N}.*"))
+            File.Delete(file);
+
         return Task.CompletedTask;
     }
 }

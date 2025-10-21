@@ -47,14 +47,14 @@ public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
         }
     }
 
-    protected virtual Activity? StartActivity(string name)
+    private Activity? StartActivity(string name)
     {
         var activity = ActivitySource.StartActivity(name);
         activity?.SetTag("request.type", typeof(TRequest).Name);
         return activity;
     }
 
-    protected virtual void LogSuccess(TResponse response, Activity? activity)
+    private void LogSuccess(TResponse response, Activity? activity)
     {
         activity?.SetTag("result.type", typeof(TResponse).Name);
         if (response is null)
@@ -74,7 +74,7 @@ public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
         }
     }
 
-    protected void HandleException(Exception ex, Activity? activity)
+    private void HandleException(Exception ex, Activity? activity)
     {
         Logger.LogError(ex, "Error handling {RequestType}: {Message}", typeof(TRequest).Name, ex.Message);
         activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
