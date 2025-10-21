@@ -1,11 +1,11 @@
-﻿using Application.Common.Handlers;
+﻿using System.Diagnostics;
+using Application.Common.Handlers;
 using AutoMapper;
 using Domain.Entities;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
@@ -15,14 +15,16 @@ public sealed class RegisterUserCommandHandler(
     IMapper mapper)
     : RequestHandlerBase<RegisterUserCommand, string>(logger)
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager
-        ?? throw new ArgumentNullException(nameof(userManager));
-
     private readonly IMapper _mapper = mapper
-        ?? throw new ArgumentNullException(nameof(mapper));
+                                       ?? throw new ArgumentNullException(nameof(mapper));
 
-    public override Task<string> Handle(RegisterUserCommand request, CancellationToken ct) =>
-        ExecuteAsync("RegisterUser", ct, async (activity, ct) =>
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+                                                                 ?? throw new ArgumentNullException(
+                                                                     nameof(userManager));
+
+    public override Task<string> Handle(RegisterUserCommand request, CancellationToken ct)
+    {
+        return ExecuteAsync("RegisterUser", ct, async (activity, ct) =>
         {
             var user = _mapper.Map<ApplicationUser>(request);
             user.About ??= string.Empty;
@@ -47,4 +49,5 @@ public sealed class RegisterUserCommandHandler(
 
             return user.Id;
         });
+    }
 }

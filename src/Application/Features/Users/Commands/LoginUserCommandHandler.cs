@@ -1,13 +1,13 @@
-﻿using Application.Abstractions.Auth;
+﻿using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Application.Abstractions.Auth;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Common.Options;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace Application.Features.Users.Commands;
 
@@ -19,16 +19,17 @@ public sealed class LoginUserCommandHandler(
     : RequestHandlerBase<LoginUserCommand, AuthTokenResponse>(logger)
 {
     private readonly IIdentityService _identity = identity
-        ?? throw new ArgumentNullException(nameof(identity));
+                                                  ?? throw new ArgumentNullException(nameof(identity));
 
     private readonly IJwtTokenFactory _jwtTokenFactory = jwtTokenFactory
-        ?? throw new ArgumentNullException(nameof(jwtTokenFactory));
+                                                         ?? throw new ArgumentNullException(nameof(jwtTokenFactory));
 
     private readonly IOptions<JwtOptions> _options = options
-        ?? throw new ArgumentNullException(nameof(options));
+                                                     ?? throw new ArgumentNullException(nameof(options));
 
-    public override Task<AuthTokenResponse> Handle(LoginUserCommand request, CancellationToken ct) =>
-        ExecuteAsync("LoginUser", ct, async (activity, ct) =>
+    public override Task<AuthTokenResponse> Handle(LoginUserCommand request, CancellationToken ct)
+    {
+        return ExecuteAsync("LoginUser", ct, async (activity, ct) =>
         {
             var email = request.Email?.Trim();
             if (string.IsNullOrWhiteSpace(email))
@@ -58,6 +59,7 @@ public sealed class LoginUserCommandHandler(
             var expiresIn = Math.Max(60, _options.Value.ExpiresInMinutes) * 60;
             return new AuthTokenResponse(tokenString, "Bearer", expiresIn);
         });
+    }
 
     private static AuthTokenResponse FailUnauthorized(Activity? activity)
     {

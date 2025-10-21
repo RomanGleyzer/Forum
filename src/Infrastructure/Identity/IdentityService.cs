@@ -4,10 +4,15 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Identity;
 
-public sealed class IdentityService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager) : IIdentityService
+public sealed class IdentityService(
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager) : IIdentityService
 {
-    private readonly UserManager<ApplicationUser> _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
-    private readonly SignInManager<ApplicationUser> _signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
+    private readonly SignInManager<ApplicationUser> _signInManager =
+        signInManager ?? throw new ArgumentNullException(nameof(signInManager));
+
+    private readonly UserManager<ApplicationUser> _userManager =
+        userManager ?? throw new ArgumentNullException(nameof(userManager));
 
     public Task<ApplicationUser?> FindByEmailAsync(string email, CancellationToken ct)
     {
@@ -20,7 +25,7 @@ public sealed class IdentityService(UserManager<ApplicationUser> userManager, Si
         if (user == null)
             return false;
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+        var result = await _signInManager.CheckPasswordSignInAsync(user, password, true);
         return result.Succeeded;
     }
 

@@ -1,4 +1,5 @@
-﻿using Application.Abstractions;
+﻿using System.Diagnostics;
+using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Options;
@@ -6,7 +7,6 @@ using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
@@ -21,32 +21,36 @@ public sealed class UploadUserAvatarCommandHandler(
     IUserAvatarUrlProvider avatarUrlProvider)
     : RequestHandlerBase<UploadUserAvatarCommand, string>(logger)
 {
-    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
-        ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
-
-    private readonly ICacheService _cache = cacheService
-        ?? throw new ArgumentNullException(nameof(cacheService));
-
-    private readonly ICurrentUserService _currentUser = currentUser
-        ?? throw new ArgumentNullException(nameof(currentUser));
-
-    private readonly UserManager<ApplicationUser> _userManager = userManager
-        ?? throw new ArgumentNullException(nameof(userManager));
-
-    private readonly IAvatarStorage _storage = storage
-        ?? throw new ArgumentNullException(nameof(storage));
-
-    private readonly IOptions<AvatarRulesOptions> _rules = rules
-        ?? throw new ArgumentNullException(nameof(rules));
-
-    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider
-        ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
-
     private const string MinKeyPrefix = "user:min";
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
-    public override Task<string> Handle(UploadUserAvatarCommand request, CancellationToken ct) =>
-        ExecuteAsync("Users.UploadAvatar", ct, async (activity, ct) =>
+    private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider
+                                                                 ?? throw new ArgumentNullException(
+                                                                     nameof(avatarUrlProvider));
+
+    private readonly ICacheService _cache = cacheService
+                                            ?? throw new ArgumentNullException(nameof(cacheService));
+
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
+                                                              ?? throw new ArgumentNullException(
+                                                                  nameof(currentUserCacheFactory));
+
+    private readonly ICurrentUserService _currentUser = currentUser
+                                                        ?? throw new ArgumentNullException(nameof(currentUser));
+
+    private readonly IOptions<AvatarRulesOptions> _rules = rules
+                                                           ?? throw new ArgumentNullException(nameof(rules));
+
+    private readonly IAvatarStorage _storage = storage
+                                               ?? throw new ArgumentNullException(nameof(storage));
+
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+                                                                 ?? throw new ArgumentNullException(
+                                                                     nameof(userManager));
+
+    public override Task<string> Handle(UploadUserAvatarCommand request, CancellationToken ct)
+    {
+        return ExecuteAsync("Users.UploadAvatar", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
             activity?.SetTag("enduser.id", userId);
@@ -95,6 +99,7 @@ public sealed class UploadUserAvatarCommandHandler(
 
             return _avatarUrlProvider.BuildUserAvatarUrl(userId, newId, user.AvatarVersion)!;
         });
+    }
 
     protected override void LogEntitySuccess(string response, Activity? activity)
     {

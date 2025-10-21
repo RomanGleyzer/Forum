@@ -1,9 +1,9 @@
-﻿using Application.Abstractions;
+﻿using System.Diagnostics;
+using Application.Abstractions;
 using Application.Common.Handlers;
 using Application.DTOs.Posts;
 using Application.Exceptions;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Application.Features.Posts.Queries;
 
@@ -13,15 +13,17 @@ public sealed class GetPostByIdQueryHandler(
     : RequestHandlerBase<GetPostByIdQuery, PostPageDto>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository
-        ?? throw new ArgumentNullException(nameof(repository));
+                                                            ?? throw new ArgumentNullException(nameof(repository));
 
-    public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct) =>
-        ExecuteAsync("GetPostById", ct, async (activity, ct) =>
+    public override Task<PostPageDto> Handle(GetPostByIdQuery request, CancellationToken ct)
+    {
+        return ExecuteAsync("GetPostById", ct, async (activity, ct) =>
         {
             var post = await _repository.GetByIdWithDetailsAsync(request.PostId, ct);
             GuardPostValid(post, request.PostId, activity);
             return post!;
         });
+    }
 
     private void GuardPostValid(PostPageDto? post, Guid postId, Activity? activity)
     {

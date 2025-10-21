@@ -1,22 +1,22 @@
-﻿using Application.Abstractions;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using Application.Abstractions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Infrastructure.Services;
 
 public sealed class RedisCacheService : ICacheService
 {
-    private readonly IDatabase _database;
-    private readonly ILogger<RedisCacheService> _logger;
-
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = false
     };
+
+    private readonly IDatabase _database;
+    private readonly ILogger<RedisCacheService> _logger;
 
     public RedisCacheService(IConnectionMultiplexer redis, ILogger<RedisCacheService> logger)
     {
@@ -77,12 +77,14 @@ public sealed class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error retrieving key '{Key}' from Redis for type {Type}.", key, typeof(T).Name);
+            _logger.LogError(ex, "Unexpected error retrieving key '{Key}' from Redis for type {Type}.", key,
+                typeof(T).Name);
             return default;
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -111,7 +113,8 @@ public sealed class RedisCacheService : ICacheService
         }
         catch (JsonException jex)
         {
-            _logger.LogError(jex, "JSON serialization error when setting key '{Key}' for type {Type}.", key, typeof(T).Name);
+            _logger.LogError(jex, "JSON serialization error when setting key '{Key}' for type {Type}.", key,
+                typeof(T).Name);
         }
         catch (RedisException rex)
         {

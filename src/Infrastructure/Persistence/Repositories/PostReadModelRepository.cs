@@ -1,19 +1,16 @@
-﻿using Application.Abstractions;
+﻿using System.Linq.Expressions;
+using Application.Abstractions;
 using Application.DTOs.Comments;
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Domain.Entities;
 using Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace Infrastructure.Persistence.Repositories;
 
 public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : IPostReadModelRepository
 {
-    private readonly SocialNetworkDbContext _dbContext = dbContext
-        ?? throw new ArgumentNullException(nameof(dbContext));
-
     private static readonly Expression<Func<Post, PostPageDto>> PostPageSelector = post => new PostPageDto
     {
         Id = post.Id,
@@ -46,6 +43,9 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
             })
             .FirstOrDefault()
     };
+
+    private readonly SocialNetworkDbContext _dbContext = dbContext
+                                                         ?? throw new ArgumentNullException(nameof(dbContext));
 
     public async Task<PostPageDto?> GetByIdWithDetailsAsync(Guid postId, CancellationToken cancellationToken = default)
     {
@@ -82,10 +82,9 @@ public sealed class PostReadModelRepository(SocialNetworkDbContext dbContext) : 
         var query = _dbContext.Posts.AsNoTracking();
 
         if (cursorCreatedAt.HasValue && cursorId.HasValue)
-        {
             query = query.Where(p => p.CreationDate < cursorCreatedAt.Value
-                || (p.CreationDate == cursorCreatedAt.Value && p.Id.CompareTo(cursorId.Value) < 0));
-        }
+                                     || (p.CreationDate == cursorCreatedAt.Value &&
+                                         p.Id.CompareTo(cursorId.Value) < 0));
 
         return await query
             .OrderByDescending(p => p.CreationDate)

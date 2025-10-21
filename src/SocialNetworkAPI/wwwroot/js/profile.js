@@ -1,11 +1,11 @@
-﻿import { dom, http, ui, storage } from './shared.js';
-import { renderPost } from './post.js';
+﻿import {dom, http, storage, ui} from './shared.js';
+import {renderPost} from './post.js';
 
 const AVATAR_FALLBACK =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%23ddd'/%3E%3Ctext x='50%25' y='58%25' font-size='28' text-anchor='middle' fill='%23666'%3F%3E%3F%3C/text%3E%3C/svg%3E";
 
 let currentUserProfile = null;
-let paging = { skip: 0, take: 10, busy: false, eof: false };
+let paging = {skip: 0, take: 10, busy: false, eof: false};
 
 function fullName(u) {
     return (
@@ -19,11 +19,11 @@ function fullName(u) {
 
 function splitDisplayName(name) {
     const parts = (name || '').trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return { firstName: '', lastName: '' };
-    if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+    if (parts.length === 0) return {firstName: '', lastName: ''};
+    if (parts.length === 1) return {firstName: parts[0], lastName: ''};
     const firstName = parts.shift();
     const lastName = parts.join(' ');
-    return { firstName, lastName };
+    return {firstName, lastName};
 }
 
 function setText(sel, value) {
@@ -45,7 +45,7 @@ function applyAvatar(imgEl, url, alt) {
         () => {
             imgEl.src = AVATAR_FALLBACK;
         },
-        { once: true }
+        {once: true}
     );
 }
 
@@ -76,7 +76,7 @@ function showAlert(id, text, type = 'danger') {
 }
 
 async function loadProfile() {
-    const { ok, json } = await http.get('/api/users/me/profile');
+    const {ok, json} = await http.get('/api/users/me/profile');
     if (!ok || !json) throw new Error(json?.message || 'Ошибка загрузки профиля');
 
     currentUserProfile = json;
@@ -108,7 +108,7 @@ async function loadProfile() {
 
 async function getUserPosts(userId, skip = 0, take = 10) {
     const id = encodeURIComponent(String(userId));
-    const { ok, json } = await http.get(
+    const {ok, json} = await http.get(
         `/api/users/${id}/posts?skip=${skip}&take=${take}`
     );
     if (!ok) throw new Error(json?.message || 'Ошибка загрузки постов пользователя');
@@ -226,7 +226,7 @@ function bindAvatarPicker() {
             const token = storage.getToken();
             const res = await fetch('/api/users/me/avatar', {
                 method: 'POST',
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                headers: token ? {Authorization: `Bearer ${token}`} : undefined,
                 body: form,
             });
 
@@ -247,7 +247,7 @@ function bindAvatarPicker() {
             const newUrl =
                 data?.avatarUrl || data?.url || currentUserProfile?.avatarUrl || avatarImg.src;
 
-            currentUserProfile = { ...(currentUserProfile || {}), avatarUrl: newUrl };
+            currentUserProfile = {...(currentUserProfile || {}), avatarUrl: newUrl};
             applyAvatar(avatarImg, newUrl, fullName(currentUserProfile));
             ui.toast('Аватар обновлён', 'success');
         } catch (err) {
@@ -258,7 +258,8 @@ function bindAvatarPicker() {
             try {
                 const src = avatarImg.getAttribute('src');
                 if (src?.startsWith('blob:')) URL.revokeObjectURL(src);
-            } catch { }
+            } catch {
+            }
             fileInput.value = '';
         }
     });
@@ -290,7 +291,7 @@ function bindEditProfilePrefill() {
             showAlert('#update-user-error', '');
             showAlert('#update-user-success', '');
         },
-        { passive: true }
+        {passive: true}
     );
 
     const form = dom.$('#update-user-form', modal);
@@ -307,7 +308,7 @@ function bindEditProfilePrefill() {
         const dateOfBirth = dom.$('#dateOfBirth', form)?.value || '';
         const about = dom.$('#about', form)?.value?.trim() || '';
 
-        const { firstName, lastName } = splitDisplayName(displayName);
+        const {firstName, lastName} = splitDisplayName(displayName);
 
         const payload = {
             FirstName: firstName,
@@ -317,7 +318,7 @@ function bindEditProfilePrefill() {
             DateOfBirth: dateOfBirth,
         };
 
-        const { ok, json } = await http.put('/api/users', payload);
+        const {ok, json} = await http.put('/api/users', payload);
 
         if (!ok) {
             showAlert('#update-user-error', json?.message || 'Не удалось сохранить данные профиля', 'danger');
@@ -325,7 +326,7 @@ function bindEditProfilePrefill() {
             return;
         }
 
-        currentUserProfile = { ...(currentUserProfile || {}), ...json };
+        currentUserProfile = {...(currentUserProfile || {}), ...json};
         const name = fullName(currentUserProfile);
         setText('#profile-username', name);
         setText('#about-name', name);
@@ -355,12 +356,12 @@ document.addEventListener(
         try {
             bindAvatarPicker();
             await loadProfile();
-            paging = { skip: 0, take: 10, busy: false, eof: false };
+            paging = {skip: 0, take: 10, busy: false, eof: false};
             await loadMorePosts();
         } catch (err) {
             ui.toast(err?.message || 'Ошибка загрузки профиля');
             bindAvatarPicker();
         }
     },
-    { passive: true }
+    {passive: true}
 );

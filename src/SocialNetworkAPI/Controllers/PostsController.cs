@@ -1,11 +1,11 @@
-﻿using Application.Abstractions;
+﻿using System.ComponentModel.DataAnnotations;
+using Application.Abstractions;
 using Application.DTOs.Posts;
 using Application.Features.Posts.Commands;
 using Application.Features.Posts.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace SocialNetworkAPI.Controllers;
 
@@ -15,8 +15,8 @@ namespace SocialNetworkAPI.Controllers;
 [Produces("application/json")]
 public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avatarUrlProvider) : ControllerBase
 {
-    private readonly ISender _sender = sender;
     private readonly IUserAvatarUrlProvider _avatar = avatarUrlProvider;
+    private readonly ISender _sender = sender;
 
     [HttpGet("{id:guid}", Name = "GetPostById")]
     [ProducesResponseType(typeof(PostPageDto), StatusCodes.Status200OK)]
@@ -34,7 +34,7 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
     public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetPostsByCursor(
         [FromQuery] DateTimeOffset? cursorCreatedAt,
         [FromQuery] Guid? cursorId,
-        [FromQuery, Range(1, 100)] int take = 10,
+        [FromQuery] [Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
         var posts = await _sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);
@@ -52,9 +52,9 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
         var dto = await _sender.Send(new GetPostByIdQuery(postId), cancellationToken);
         Enrich(dto);
         return CreatedAtRoute(
-            routeName: "GetPostById",
-            routeValues: new { id = postId },
-            value: dto);
+            "GetPostById",
+            new { id = postId },
+            dto);
     }
 
     private void Enrich(PostPageDto dto)

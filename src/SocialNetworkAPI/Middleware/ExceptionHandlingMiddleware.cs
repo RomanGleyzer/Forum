@@ -1,7 +1,7 @@
-﻿using Application.Exceptions;
-using FluentValidation;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
+using Application.Exceptions;
+using FluentValidation;
 
 namespace SocialNetworkAPI.Middleware;
 
@@ -9,8 +9,10 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger =
+        logger ?? throw new ArgumentNullException(nameof(logger));
+
     private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
-    private readonly ILogger<ExceptionHandlingMiddleware> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -47,18 +49,21 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         await ctx.Response.WriteAsJsonAsync(problem, Json, ctx.RequestAborted);
     }
 
-    private static (int Status, string Title, object? Detail) MapEx(Exception ex) => ex switch
+    private static (int Status, string Title, object? Detail) MapEx(Exception ex)
     {
-        UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
+        return ex switch
+        {
+            UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
 
-        ValidationException v => (StatusCodes.Status400BadRequest, "Validation failed",
-            new { errors = v.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) }),
+            ValidationException v => (StatusCodes.Status400BadRequest, "Validation failed",
+                new { errors = v.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }) }),
 
-        ArgumentException a => (StatusCodes.Status400BadRequest, "Bad request",
-            new { error = a.Message }),
+            ArgumentException a => (StatusCodes.Status400BadRequest, "Bad request",
+                new { error = a.Message }),
 
-        NotFoundException<object> => (StatusCodes.Status404NotFound, "Not Found", null),
+            NotFoundException<object> => (StatusCodes.Status404NotFound, "Not Found", null),
 
-        _ => (StatusCodes.Status500InternalServerError, "Unexpected error", null)
-    };
+            _ => (StatusCodes.Status500InternalServerError, "Unexpected error", null)
+        };
+    }
 }

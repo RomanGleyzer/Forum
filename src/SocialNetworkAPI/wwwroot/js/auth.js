@@ -1,4 +1,4 @@
-﻿import { dom, http, ui, storage } from './shared.js';
+﻿import {dom, http, storage, ui} from './shared.js';
 
 const disableForm = (form, d) => {
     form?.querySelectorAll('input,button,select,textarea').forEach(el => el.disabled = !!d);
@@ -14,7 +14,7 @@ loginForm?.addEventListener('submit', async (e) => {
     const email = dom.$('#login-email')?.value.trim();
     const password = dom.$('#login-password')?.value;
 
-    const { ok, json } = await http.post('/api/auth/login', { email, password });
+    const {ok, json} = await http.post('/api/auth/login', {email, password});
 
     if (ok) {
         const token =
@@ -49,10 +49,12 @@ registerForm?.addEventListener('submit', async (e) => {
         dateOfBirth: dom.$('#reg-birthdate')?.value,
     };
     if (data.password !== data.confirmedPassword) {
-        ui.toast('Пароли не совпадают'); disableForm(registerForm, false); return;
+        ui.toast('Пароли не совпадают');
+        disableForm(registerForm, false);
+        return;
     }
 
-    const { ok, json } = await http.post('/api/auth/register', data);
+    const {ok, json} = await http.post('/api/auth/register', data);
     if (ok) {
         ui.toast('Аккаунт создан. Выполните вход.', 'success');
         location.href = 'login.html';

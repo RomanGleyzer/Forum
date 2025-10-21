@@ -16,19 +16,20 @@ public sealed class CreatePostCommandHandler(
     : RequestHandlerBase<CreatePostCommand, Guid>(logger)
 {
     private readonly ICurrentUserService _currentUser = currentUser
-        ?? throw new ArgumentNullException(nameof(currentUser));
+                                                        ?? throw new ArgumentNullException(nameof(currentUser));
 
     private readonly IMapper _mapper = mapper
-        ?? throw new ArgumentNullException(nameof(mapper));
+                                       ?? throw new ArgumentNullException(nameof(mapper));
 
     private readonly IPostRepository _repository = repository
-        ?? throw new ArgumentNullException(nameof(repository));
+                                                   ?? throw new ArgumentNullException(nameof(repository));
 
     private readonly IUnitOfWork _unitOfWork = unitOfWork
-        ?? throw new ArgumentNullException(nameof(unitOfWork));
+                                               ?? throw new ArgumentNullException(nameof(unitOfWork));
 
-    public override Task<Guid> Handle(CreatePostCommand request, CancellationToken ct) =>
-        ExecuteAsync("CreatePost", ct, async (activity, ct) =>
+    public override Task<Guid> Handle(CreatePostCommand request, CancellationToken ct)
+    {
+        return ExecuteAsync("CreatePost", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
             if (string.IsNullOrWhiteSpace(userId))
@@ -46,4 +47,5 @@ public sealed class CreatePostCommandHandler(
 
             return post.Id;
         });
+    }
 }

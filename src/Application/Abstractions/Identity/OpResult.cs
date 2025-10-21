@@ -3,5 +3,9 @@
 public sealed record OpResult(bool Succeeded, IReadOnlyList<string> Errors)
 {
     public static readonly OpResult Success = new(true, []);
-    public static OpResult Fail(params string[] errors) => new(false, errors);
+
+    public static OpResult Fail(params string[] errors)
+    {
+        return new OpResult(false, errors);
+    }
 }

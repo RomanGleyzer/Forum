@@ -48,10 +48,8 @@ public sealed class LocalAvatarStorage(IOptions<MediaStorageOptions> options) : 
     {
         var dir = Path.Combine(_opt.RootPath, _opt.AvatarsPath, userId);
         if (Directory.Exists(dir))
-        {
             foreach (var file in Directory.EnumerateFiles(dir, $"{avatarId:N}.*"))
                 File.Delete(file);
-        }
         return Task.CompletedTask;
     }
 }

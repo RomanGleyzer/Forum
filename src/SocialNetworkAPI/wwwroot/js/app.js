@@ -1,4 +1,4 @@
-﻿import { storage, dom } from './shared.js';
+﻿import {dom, storage} from './shared.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const token = storage.getToken();
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const next = document.body.classList.contains('theme-dark') ? 'light' : 'dark';
         applyTheme(next);
         themeBtn.setAttribute('aria-pressed', String(next === 'dark'));
-    }, { passive: true });
+    }, {passive: true});
 
     const loginNav = dom.$('#login-nav');
     const registerNav = dom.$('#register-nav');
@@ -47,5 +47,5 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         storage.clearToken();
         location.href = 'login.html';
-    }, { passive: true });
-}, { passive: true });
+    }, {passive: true});
+}, {passive: true});

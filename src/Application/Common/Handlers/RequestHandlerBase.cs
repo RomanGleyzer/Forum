@@ -1,6 +1,7 @@
-﻿using MediatR;
-using Microsoft.Extensions.Logging;
+﻿using System.Collections;
 using System.Diagnostics;
+using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Common.Handlers;
 
@@ -48,7 +49,7 @@ public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
 
     protected virtual Activity? StartActivity(string name)
     {
-        var activity = ActivitySource.StartActivity(name, ActivityKind.Internal);
+        var activity = ActivitySource.StartActivity(name);
         activity?.SetTag("request.type", typeof(TRequest).Name);
         return activity;
     }
@@ -64,7 +65,7 @@ public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
             case Array a:
                 activity?.SetTag("result.count", a.Length);
                 break;
-            case System.Collections.ICollection c:
+            case ICollection c:
                 activity?.SetTag("result.count", c.Count);
                 break;
             default:
@@ -87,5 +88,7 @@ public abstract class RequestHandlerBase<TRequest, TResponse>(ILogger logger)
             }));
     }
 
-    protected virtual void LogEntitySuccess(TResponse response, Activity? activity) { }
+    protected virtual void LogEntitySuccess(TResponse response, Activity? activity)
+    {
+    }
 }

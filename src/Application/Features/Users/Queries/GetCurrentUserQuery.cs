@@ -3,4 +3,4 @@ using MediatR;
 
 namespace Application.Features.Users.Queries;
 
-public record GetCurrentUserQuery() : IRequest<CurrentUserDto>;
+public record GetCurrentUserQuery : IRequest<CurrentUserDto>;

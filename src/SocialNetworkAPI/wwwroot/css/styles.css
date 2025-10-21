@@ -728,7 +728,7 @@ h4 {
     color: color-mix(in oklab, var(--primary), black 20%);
 }
 
-.ui-dropdown[open]>summary {
+.ui-dropdown[open] > summary {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
@@ -860,7 +860,7 @@ h4 {
     margin: 0;
 }
 
-.comments-list>li {
+.comments-list > li {
     list-style: none;
 }
 

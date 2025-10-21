@@ -1,4 +1,5 @@
-﻿using Application.Abstractions;
+﻿using System.Diagnostics;
+using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Users;
@@ -8,7 +9,6 @@ using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 
@@ -21,32 +21,35 @@ public class UpdateUserCommandHandler(
     ICacheService cache)
     : RequestHandlerBase<UpdateUserCommand, ApplicationUserDto>(logger)
 {
-    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
-        ?? throw new ArgumentNullException(nameof(currentUserCacheFactory));
-
-    private readonly ICurrentUserService _currentUser = currentUser
-        ?? throw new ArgumentNullException(nameof(currentUser));
-
-    private readonly IMapper _mapper = mapper
-        ?? throw new ArgumentNullException(nameof(mapper));
-
-    private readonly UserManager<ApplicationUser> _userManager = userManager
-        ?? throw new ArgumentNullException(nameof(userManager));
-
-    private readonly ICacheService _cache = cache
-        ?? throw new ArgumentNullException(nameof(cache));
-
     private const string MinKeyPrefix = "user:min";
     private static readonly TimeSpan MinTtl = TimeSpan.FromMinutes(15);
 
-    public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken ct) =>
-        ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
+    private readonly ICacheService _cache = cache
+                                            ?? throw new ArgumentNullException(nameof(cache));
+
+    private readonly ICurrentUserCacheFactory _cacheFactory = currentUserCacheFactory
+                                                              ?? throw new ArgumentNullException(
+                                                                  nameof(currentUserCacheFactory));
+
+    private readonly ICurrentUserService _currentUser = currentUser
+                                                        ?? throw new ArgumentNullException(nameof(currentUser));
+
+    private readonly IMapper _mapper = mapper
+                                       ?? throw new ArgumentNullException(nameof(mapper));
+
+    private readonly UserManager<ApplicationUser> _userManager = userManager
+                                                                 ?? throw new ArgumentNullException(
+                                                                     nameof(userManager));
+
+    public override Task<ApplicationUserDto> Handle(UpdateUserCommand request, CancellationToken ct)
+    {
+        return ExecuteAsync("UpdateUser", ct, async (activity, ct) =>
         {
             var userId = _currentUser.UserId;
             activity?.SetTag("enduser.id", userId);
 
             var user = await _userManager.FindByIdAsync(userId)
-                         ?? throw new UnauthorizedAccessException("User not found.");
+                       ?? throw new UnauthorizedAccessException("User not found.");
 
             var (anyChanged, nameChanged, emailChanged) = ApplyChanges(user, request);
 
@@ -83,15 +86,21 @@ public class UpdateUserCommandHandler(
             activity?.AddEvent(new ActivityEvent("UserUpdated"));
             return _mapper.Map<ApplicationUserDto>(user);
         });
+    }
 
 
     private static string? NormalizeOrNull(string? s)
-        => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    {
+        return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    }
 
     private static bool EqualsOrdinal(string? a, string? b)
-        => string.Equals(a, b, StringComparison.Ordinal);
+    {
+        return string.Equals(a, b, StringComparison.Ordinal);
+    }
 
-    private static (bool anyChanged, bool nameChanged, bool emailChanged) ApplyChanges(ApplicationUser user, UpdateUserCommand request)
+    private static (bool anyChanged, bool nameChanged, bool emailChanged) ApplyChanges(ApplicationUser user,
+        UpdateUserCommand request)
     {
         var oldFirst = NormalizeOrNull(user.FirstName);
         var oldLast = NormalizeOrNull(user.LastName);
@@ -108,14 +117,24 @@ public class UpdateUserCommandHandler(
         var nameChanged = !EqualsOrdinal(oldFirst, newFirst) || !EqualsOrdinal(oldLast, newLast);
         var emailChanged = !EqualsOrdinal(oldEmail, newEmail);
         var anyChanged = nameChanged
-                        || emailChanged
-                        || !EqualsOrdinal(oldAbout, newAbout)
-                        || oldDob != newDob;
+                         || emailChanged
+                         || !EqualsOrdinal(oldAbout, newAbout)
+                         || oldDob != newDob;
 
         if (!anyChanged) return (false, false, false);
 
-        if (nameChanged) { user.FirstName = newFirst; user.LastName = newLast; }
-        if (emailChanged) { user.Email = newEmail; user.UserName = newEmail; }
+        if (nameChanged)
+        {
+            user.FirstName = newFirst;
+            user.LastName = newLast;
+        }
+
+        if (emailChanged)
+        {
+            user.Email = newEmail;
+            user.UserName = newEmail;
+        }
+
         if (!EqualsOrdinal(oldAbout, newAbout)) user.About = newAbout;
         if (oldDob != newDob) user.DateOfBirth = newDob;
 

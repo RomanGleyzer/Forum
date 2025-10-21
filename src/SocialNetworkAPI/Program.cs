@@ -1,12 +1,13 @@
+using System.Threading.RateLimiting;
 using Application.Abstractions;
 using Infrastructure.Extensions;
 using Infrastructure.Logging;
 using Infrastructure.Persistence.Context;
 using Serilog;
+using Serilog.Events;
 using SocialNetworkAPI.Extensions;
 using SocialNetworkAPI.Middleware;
 using SocialNetworkAPI.Services;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +23,8 @@ builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 20 * 1024 * 
 builder.Services.AddRateLimiter(o =>
 {
     o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
-        factory: _ => new FixedWindowRateLimiterOptions
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 5,
             Window = TimeSpan.FromMinutes(1),
@@ -31,8 +32,8 @@ builder.Services.AddRateLimiter(o =>
         }));
 
     o.AddPolicy("uploads", ctx => RateLimitPartition.GetTokenBucketLimiter(
-        partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
-        factory: _ => new TokenBucketRateLimiterOptions
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        _ => new TokenBucketRateLimiterOptions
         {
             TokenLimit = 10,
             TokensPerPeriod = 10,
@@ -71,8 +72,8 @@ app.UseSerilogRequestLogging(opts =>
         ctx.Request.Path.StartsWithSegments("/health") ||
         ctx.Request.Path.StartsWithSegments("/favicon.ico") ||
         ctx.Request.Path.StartsWithSegments("/assets")
-            ? Serilog.Events.LogEventLevel.Debug
-            : Serilog.Events.LogEventLevel.Information;
+            ? LogEventLevel.Debug
+            : LogEventLevel.Information;
 });
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

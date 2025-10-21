@@ -7,7 +7,8 @@ namespace Infrastructure.Services;
 public sealed class CurrentUserCacheFactory(IUserAvatarUrlProvider avatarUrlProvider) : ICurrentUserCacheFactory
 {
     private readonly IUserAvatarUrlProvider _avatarUrlProvider = avatarUrlProvider
-        ?? throw new ArgumentNullException(nameof(avatarUrlProvider));
+                                                                 ?? throw new ArgumentNullException(
+                                                                     nameof(avatarUrlProvider));
 
     public CurrentUserDto Create(ApplicationUser user)
     {

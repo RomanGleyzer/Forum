@@ -6,41 +6,45 @@
 
 const buildHeaders = (extra = {}) => {
     const token = storage.getToken();
-    const h = { Accept: 'application/json', 'Content-Type': 'application/json', ...extra };
+    const h = {Accept: 'application/json', 'Content-Type': 'application/json', ...extra};
     if (token) h['Authorization'] = `Bearer ${token}`;
     return h;
 };
 
 const safeJson = async (res) => {
-    try { return await res.json(); } catch { return null; }
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
 };
 
 export const http = {
-    get: async (url, { signal } = {}) => {
-        const res = await fetch(url, { method: 'GET', headers: buildHeaders(), signal });
-        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    get: async (url, {signal} = {}) => {
+        const res = await fetch(url, {method: 'GET', headers: buildHeaders(), signal});
+        return {ok: res.ok, status: res.status, json: await safeJson(res)};
     },
-    post: async (url, body, { signal } = {}) => {
+    post: async (url, body, {signal} = {}) => {
         const res = await fetch(url, {
             method: 'POST',
             headers: buildHeaders(),
             body: JSON.stringify(body),
             signal
         });
-        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+        return {ok: res.ok, status: res.status, json: await safeJson(res)};
     },
-    put: async (url, body, { signal } = {}) => {
+    put: async (url, body, {signal} = {}) => {
         const res = await fetch(url, {
             method: 'PUT',
             headers: buildHeaders(),
             body: JSON.stringify(body),
             signal
         });
-        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+        return {ok: res.ok, status: res.status, json: await safeJson(res)};
     },
-    del: async (url, { signal } = {}) => {
-        const res = await fetch(url, { method: 'DELETE', headers: buildHeaders(), signal });
-        return { ok: res.ok, status: res.status, json: await safeJson(res) };
+    del: async (url, {signal} = {}) => {
+        const res = await fetch(url, {method: 'DELETE', headers: buildHeaders(), signal});
+        return {ok: res.ok, status: res.status, json: await safeJson(res)};
     },
 };
 
@@ -53,8 +57,12 @@ export const dom = {
         return el;
     },
     fragment: () => document.createDocumentFragment(),
-    show: (el, show = true) => { if (el) el.classList.toggle('d-none', !show); },
-    hide: (el) => { if (el) el.classList.add('d-none'); },
+    show: (el, show = true) => {
+        if (el) el.classList.toggle('d-none', !show);
+    },
+    hide: (el) => {
+        if (el) el.classList.add('d-none');
+    },
 };
 
 export const fmt = {

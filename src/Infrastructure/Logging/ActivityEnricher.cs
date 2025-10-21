@@ -1,6 +1,6 @@
-﻿using Serilog.Core;
+﻿using System.Diagnostics;
+using Serilog.Core;
 using Serilog.Events;
-using System.Diagnostics;
 
 namespace Infrastructure.Logging;
 
@@ -13,7 +13,8 @@ public class ActivityEnricher : ILogEventEnricher
         {
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("TraceId", activity.TraceId.ToString()));
             logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("SpanId", activity.SpanId.ToString()));
-            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ActivityStartTime", activity.StartTimeUtc.ToString("o")));
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ActivityStartTime",
+                activity.StartTimeUtc.ToString("o")));
         }
     }
 }

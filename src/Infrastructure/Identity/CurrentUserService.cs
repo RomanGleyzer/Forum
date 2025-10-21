@@ -1,6 +1,6 @@
-﻿using Application.Abstractions.Identity;
+﻿using System.Security.Claims;
+using Application.Abstractions.Identity;
 using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
 
 namespace Infrastructure.Identity;
 

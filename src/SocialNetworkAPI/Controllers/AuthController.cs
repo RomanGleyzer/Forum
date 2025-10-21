@@ -16,7 +16,9 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(AuthTokenResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthTokenResponse>> Login([FromBody] LoginUserCommand command, CancellationToken ct)
-        => Ok(await sender.Send(command, ct));
+    {
+        return Ok(await sender.Send(command, ct));
+    }
 
     [HttpPost("register")]
     [Produces("application/json")]

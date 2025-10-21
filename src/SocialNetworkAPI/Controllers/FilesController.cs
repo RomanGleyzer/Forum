@@ -36,6 +36,6 @@ public class FilesController(IOptions<MediaStorageOptions> storage) : Controller
         Response.Headers.LastModified = info.LastWriteTimeUtc.ToString("R");
         Response.Headers.XContentTypeOptions = "nosniff";
 
-        return PhysicalFile(full, "image/webp", enableRangeProcessing: false);
+        return PhysicalFile(full, "image/webp", false);
     }
 }

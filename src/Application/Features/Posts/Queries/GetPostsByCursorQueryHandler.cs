@@ -1,8 +1,8 @@
-﻿using Application.Abstractions;
+﻿using System.Diagnostics;
+using Application.Abstractions;
 using Application.Common.Handlers;
 using Application.DTOs.Posts;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace Application.Features.Posts.Queries;
 
@@ -12,10 +12,11 @@ public sealed class GetPostsByCursorQueryHandler(
     : RequestHandlerBase<GetPostsByCursorQuery, IReadOnlyList<PostPageDto>>(logger)
 {
     private readonly IPostReadModelRepository _repository = repository
-        ?? throw new ArgumentNullException(nameof(repository));
+                                                            ?? throw new ArgumentNullException(nameof(repository));
 
-    public override Task<IReadOnlyList<PostPageDto>> Handle(GetPostsByCursorQuery request, CancellationToken ct) =>
-        ExecuteAsync("GetPostsByCursor", ct, async (activity, ct) =>
+    public override Task<IReadOnlyList<PostPageDto>> Handle(GetPostsByCursorQuery request, CancellationToken ct)
+    {
+        return ExecuteAsync("GetPostsByCursor", ct, async (activity, ct) =>
         {
             var posts = await _repository.GetPagePostsCursorAsync(
                 request.CursorCreatedAt,
@@ -25,6 +26,7 @@ public sealed class GetPostsByCursorQueryHandler(
 
             return posts;
         });
+    }
 
     protected override void LogEntitySuccess(IReadOnlyList<PostPageDto> posts, Activity? activity)
     {
