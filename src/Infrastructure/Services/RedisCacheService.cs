@@ -35,6 +35,7 @@ public sealed class RedisCacheService : ICacheService
 
         try
         {
+            if (cancellationToken.IsCancellationRequested) return default;
             var value = await _database
                 .StringGetAsync(key)
                 .WaitAsync(cancellationToken)

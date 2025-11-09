@@ -73,7 +73,16 @@ public static class DependencyInjection
 
         var redisConnectionString = config.GetConnectionString("Redis")
                                     ?? throw new InvalidOperationException("Redis connection string is missing.");
-        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+        
+        services.AddSingleton<IConnectionMultiplexer>(_ =>
+        {
+            var opts = ConfigurationOptions.Parse(redisConnectionString);
+            opts.AbortOnConnectFail = false;
+            opts.ConnectRetry = 3;
+            opts.SyncTimeout = 5000;
+            return ConnectionMultiplexer.Connect(opts);
+        });
+
         services.AddSingleton<ICacheService, RedisCacheService>();
 
         services.AddHttpContextAccessor();

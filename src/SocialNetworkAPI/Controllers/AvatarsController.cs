@@ -18,6 +18,11 @@ public class AvatarsController(ISender sender) : ControllerBase
     [HttpPost]
     [EnableRateLimiting("uploads")]
     [RequestSizeLimit(20 * 1024 * 1024)]
+    [ProducesResponseType(typeof(AvatarUploadResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<string>> Upload([FromForm] IFormFile file, CancellationToken cancellationToken)
     {
         await using var stream = file.OpenReadStream();

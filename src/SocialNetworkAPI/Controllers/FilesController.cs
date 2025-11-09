@@ -20,7 +20,10 @@ public class FilesController(IOptions<MediaStorageOptions> storage) : Controller
         var full = Path.GetFullPath(Path.Combine(root, rel));
 
         if (!full.StartsWith(root, StringComparison.Ordinal))
-            return BadRequest();
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest, 
+                title: "Invalid path", 
+                detail: "Path traversal attempt detected.");
 
         if (!System.IO.File.Exists(full))
             return NotFound();
