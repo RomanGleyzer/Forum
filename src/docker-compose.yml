@@ -1,6 +1,26 @@
 name: forum
 
 services:
+  
+  volume-permissions:
+    image: mcr.microsoft.com/dotnet/aspnet:9.0
+
+    user: root
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        uid=$$(id -u app)
+        gid=$$(id -g app)
+        chown -R "$$uid:$$gid" /media /logs
+
+    volumes:
+      - media_data:/media
+      - logs_data:/logs
+
+    restart: "no"
+
   postgres:
     image: postgres:18
     environment:
