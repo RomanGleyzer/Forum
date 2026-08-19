@@ -1,11 +1,11 @@
-﻿using System.Linq.Expressions;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.DTOs.Comments;
 using Application.DTOs.Posts;
 using Application.DTOs.Users;
 using Domain.Entities;
 using Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace Infrastructure.Persistence.Repositories;
 

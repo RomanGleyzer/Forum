@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Users;
@@ -7,6 +6,7 @@ using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Application.Features.Users.Queries;
 

@@ -1,10 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.DTOs.Posts;
 using Application.Features.Posts.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace SocialNetworkAPI.Controllers;
 
@@ -18,8 +18,8 @@ public sealed class UserPostsController(ISender sender, IUserAvatarUrlProvider a
     [ProducesResponseType(typeof(IReadOnlyList<PostPageDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetUserPosts(
         string userId,
-        [FromQuery] [Range(0, int.MaxValue)] int skip = 0,
-        [FromQuery] [Range(1, 100)] int take = 10,
+        [FromQuery][Range(0, int.MaxValue)] int skip = 0,
+        [FromQuery][Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
         var posts = await sender.Send(new GetUserPostsQuery(userId, skip, take), cancellationToken);

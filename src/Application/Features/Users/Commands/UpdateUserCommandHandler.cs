@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.DTOs.Users;
@@ -9,6 +8,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 

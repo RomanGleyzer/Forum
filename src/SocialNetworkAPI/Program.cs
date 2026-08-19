@@ -1,13 +1,14 @@
-using System.Threading.RateLimiting;
 using Application.Abstractions;
 using Infrastructure.Extensions;
 using Infrastructure.Logging;
 using Infrastructure.Persistence.Context;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
 using SocialNetworkAPI.Extensions;
 using SocialNetworkAPI.Middleware;
 using SocialNetworkAPI.Services;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +63,13 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    await using var scope = app.Services.CreateAsyncScope();
+
+    var dbContext = scope.ServiceProvider
+        .GetRequiredService<SocialNetworkDbContext>();
+
+    await dbContext.Database.MigrateAsync();
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }

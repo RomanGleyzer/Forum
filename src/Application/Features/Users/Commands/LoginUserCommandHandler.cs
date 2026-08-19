@@ -1,13 +1,13 @@
-﻿using System.Diagnostics;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Application.Abstractions.Auth;
+﻿using Application.Abstractions.Auth;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Common.Options;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Application.Features.Users.Commands;
 

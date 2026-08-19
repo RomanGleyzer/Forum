@@ -1,0 +1,91 @@
+name: forum
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-socialnet}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "5431:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: SocialNetworkAPI/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+
+      ConnectionStrings__PostgreSQLConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-socialnet};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__Redis: "redis:6379"
+
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "SocialNetworkAPI"
+      Jwt__Audience: "SocialNetworkAPIUsers"
+      Jwt__ExpiresInMinutes: "60"
+
+      Cors__AllowedOrigins__0: "${CORS_ALLOWED_ORIGIN:-http://localhost:8080}"
+
+      MediaStorage__BaseUrl: "http://localhost:8080"
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - media_data:/app/wwwroot/media
+      - logs_data:/app/Logs
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  logs_data:

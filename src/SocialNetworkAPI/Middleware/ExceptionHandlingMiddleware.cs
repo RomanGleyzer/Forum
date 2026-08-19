@@ -1,7 +1,7 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
-using Application.Exceptions;
+﻿using Application.Exceptions;
 using FluentValidation;
+using System.Diagnostics;
+using System.Text.Json;
 
 namespace SocialNetworkAPI.Middleware;
 

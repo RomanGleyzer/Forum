@@ -1,11 +1,11 @@
-﻿using System.Diagnostics;
-using Application.Common.Handlers;
+﻿using Application.Common.Handlers;
 using AutoMapper;
 using Domain.Entities;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 

@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-using System.Text;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.Abstractions.Auth;
 using Application.Abstractions.Identity;
 using Application.Behaviors;
@@ -24,6 +22,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
+using System.Security.Claims;
+using System.Text;
 
 namespace Infrastructure.Extensions;
 
@@ -73,7 +73,7 @@ public static class DependencyInjection
 
         var redisConnectionString = config.GetConnectionString("Redis")
                                     ?? throw new InvalidOperationException("Redis connection string is missing.");
-        
+
         services.AddSingleton<IConnectionMultiplexer>(_ =>
         {
             var opts = ConfigurationOptions.Parse(redisConnectionString);

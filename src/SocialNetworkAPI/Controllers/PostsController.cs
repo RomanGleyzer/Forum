@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.DTOs.Posts;
 using Application.Features.Posts.Commands;
 using Application.Features.Posts.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace SocialNetworkAPI.Controllers;
 
@@ -30,7 +30,7 @@ public sealed class PostsController(ISender sender, IUserAvatarUrlProvider avata
     public async Task<ActionResult<IReadOnlyList<PostPageDto>>> GetPostsByCursor(
         [FromQuery] DateTimeOffset? cursorCreatedAt,
         [FromQuery] Guid? cursorId,
-        [FromQuery] [Range(1, 100)] int take = 10,
+        [FromQuery][Range(1, 100)] int take = 10,
         CancellationToken cancellationToken = default)
     {
         var posts = await sender.Send(new GetPostsByCursorQuery(cursorCreatedAt, cursorId, take), cancellationToken);

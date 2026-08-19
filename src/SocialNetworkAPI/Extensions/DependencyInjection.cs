@@ -1,8 +1,8 @@
-﻿using System.Reflection;
-using Application.Features.Posts.Commands;
+﻿using Application.Features.Posts.Commands;
 using FluentValidation;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Reflection;
 
 namespace SocialNetworkAPI.Extensions;
 

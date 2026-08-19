@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.Common.Handlers;
 using Application.DTOs.Posts;
 using Application.Exceptions;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Application.Features.Posts.Queries;
 

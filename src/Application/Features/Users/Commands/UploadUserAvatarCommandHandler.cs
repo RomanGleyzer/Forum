@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Application.Abstractions.Identity;
 using Application.Common.Handlers;
 using Application.Options;
@@ -7,6 +6,7 @@ using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 namespace Application.Features.Users.Commands;
 

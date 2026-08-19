@@ -1,8 +1,8 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using Application.Abstractions;
+﻿using Application.Abstractions;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Infrastructure.Services;
 

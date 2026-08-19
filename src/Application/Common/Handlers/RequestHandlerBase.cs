@@ -1,7 +1,7 @@
-﻿using System.Collections;
-using System.Diagnostics;
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Collections;
+using System.Diagnostics;
 
 namespace Application.Common.Handlers;
 
